@@ -1,174 +1,158 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Sun,
   Sunrise,
   Sunset,
   Calendar,
+  Clock,
   Activity,
-  TrendingUp,
-  Brain,
-  Wind,
-  Info,
-  Sparkles,
-  Download,
-  Upload,
-  RotateCcw,
-  Plus,
-  Check,
-  ChevronLeft,
-  ChevronRight,
   Shield,
-  Heart,
   Zap,
   Moon,
+  Download,
   Trash2,
-  Play,
-  Pause,
-  Sliders,
-  PieChart,
-  HelpCircle,
+  Sparkles,
+  RefreshCw,
+  AlertTriangle,
+  CheckCircle2,
+  Filter,
+  Globe,
+  Info,
+  Brain,
+  BarChart2,
+  FileSpreadsheet,
+  PlusCircle,
+  Edit3,
+  X,
+  Search,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Github,
+  Key,
+  Database,
+  Upload,
   FileText,
-  Clock,
-  Feather,
-  Smile,
-  Globe
+  Settings,
+  ArrowUpDown,
+  Eye,
+  Link as LinkIcon,
+  Unlink,
+  Layers,
+  Flame,
+  TrendingUp,
+  Sliders
 } from 'lucide-react';
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  ReferenceArea
+} from 'recharts';
 
+const STORAGE_KEY_RECORDS = 'window_of_tolerance_phase4_logs';
+const STORAGE_KEY_GITHUB = 'window_of_tolerance_github_config';
 
-// Zone Types: 'hyper' | 'optimal' | 'hypo'
-const ZONES = {
-  HYPER: {
-    id: 'hyper',
-    nameEn: 'Hyperarousal Zone',
-    nameLt: 'Hiper-sujaudinimo zona',
-    range: [8, 9, 10],
-    color: 'amber',
-    badgeBg: 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-700',
-    cardBg: 'from-amber-500/10 to-red-500/10 border-amber-500/30',
-    barColor: 'bg-gradient-to-r from-amber-500 to-red-500',
-    activeBtn: 'bg-red-500 text-white shadow-lg shadow-red-500/30 scale-105 ring-2 ring-red-400',
-    sympathetic: 'Sympathetic Nervous System (Fight / Flight)',
-    sympatheticLt: 'Simpatinė nervų sistema (Kova / Bėgimas)',
-    descEn: 'Agitation, anxiety, anger, overwhelm, racing thoughts, panic, hyper-vigilance.',
-    descLt: 'Jaudulys, nerimas, pyktis, perdegimas, skriejančios mintys, panika, padidėjęs budrumas.',
-    somaticEn: 'Racing heart, tight chest, shallow breathing, clenched jaw, restlessness.',
-    somaticLt: 'Dažnas širdies plakimas, užspausta krūtinė, paviršinis kvėpavimas, sučiupti žandikauliai.',
-    copingEn: 'Down-regulate: Prolonged exhales, 4-7-8 breathing, heavy weight pressure, cool water on face.',
-    copingLt: 'Lėtinimas: Ilgesni iškvėpimai, 4-7-8 kvėpavimas, svoris ant krūtinės, šaltas vanduo ant veido.'
-  },
-  OPTIMAL: {
-    id: 'optimal',
-    nameEn: 'Optimal Tolerance Zone',
-    nameLt: 'Tolerancijos langas (Optimali zona)',
-    range: [4, 5, 6, 7],
-    color: 'emerald',
-    badgeBg: 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700',
-    cardBg: 'from-emerald-500/10 to-teal-500/10 border-emerald-500/30',
-    barColor: 'bg-gradient-to-r from-emerald-500 to-teal-500',
-    activeBtn: 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 scale-105 ring-2 ring-emerald-400',
-    sympathetic: 'Ventral Vagal Social Engagement System',
-    sympatheticLt: 'Ventralinė klajoklio nervo sistema (Sauga ir ryšys)',
-    descEn: 'Calm, grounded, flexible, connected, present, capable of processing emotions smoothly.',
-    descLt: 'Ramybė, įsižeminimas, lankstumas, buvimas čia ir dabar, gebėjimas sklandžiai valdyti emocijas.',
-    somaticEn: 'Relaxed shoulders, steady deep breathing, open posture, soft facial expression.',
-    somaticLt: 'Atsipalaidavę pečiai, tolygus gilus kvėpavimas, atvira laikysena, švelni veido išraiška.',
-    copingEn: 'Maintain & Nourish: Creative expression, mindful movement, connection, gratitude logging.',
-    copingLt: 'Palaikymas: Kūrybiškumas, dėmesingas judėjimas, bendravimas, dėkingumo dienoraštis.'
-  },
-  HYPO: {
-    id: 'hypo',
-    nameEn: 'Hypoarousal Zone',
-    nameLt: 'Hipo-sujaudinimo zona',
-    range: [1, 2, 3],
-    color: 'indigo',
-    badgeBg: 'bg-indigo-100 text-indigo-800 border-indigo-300 dark:bg-indigo-900/40 dark:text-indigo-300 dark:border-indigo-700',
-    cardBg: 'from-indigo-500/10 to-blue-500/10 border-indigo-500/30',
-    barColor: 'bg-gradient-to-r from-indigo-500 to-blue-600',
-    activeBtn: 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30 scale-105 ring-2 ring-indigo-400',
-    sympathetic: 'Dorsal Vagal Shutdown (Freeze / Collapse)',
-    sympatheticLt: 'Dorsalinė klajoklio nervo sistema (Sustingimas / Išsekimas)',
-    descEn: 'Numbness, exhaustion, depression, brain fog, dissociation, feeling empty or disconnected.',
-    descLt: 'Otrpimas, išsekimas, smegenų rūkas, disociacija, tuštumos ar atsiribojimo jausmas.',
-    somaticEn: 'Heavy limbs, sluggish movements, low energy, cold hands, slow heart rate.',
-    somaticLt: 'Sunkios rankos ir kojos, lėti judesiai, šaltos rankos, silpnas energijos lygis.',
-    copingEn: 'Up-regulate gently: Light stretching, sensory activation (snack/scent), rhythmic movement.',
-    copingLt: 'Švelnus žadinimas: Lengvi tempimai, pojūčių aktyvinimas (kvapas, skonis), ritmo judesiai.'
-  }
-};
-
-const EMOTION_TAGS = [
-  { id: 'anxious', labelEn: 'Anxious', labelLt: 'Nervingas(-a)', zone: 'hyper' },
-  { id: 'restless', labelEn: 'Restless', labelLt: 'Neramus(-a)', zone: 'hyper' },
-  { id: 'overwhelmed', labelEn: 'Overwhelmed', labelLt: 'Pervargęs(-usi)', zone: 'hyper' },
-  { id: 'frustrated', labelEn: 'Frustrated', labelLt: 'Suirzęs(-usi)', zone: 'hyper' },
-  { id: 'panicked', labelEn: 'Panicked', labelLt: 'Apimtas(-a) panikos', zone: 'hyper' },
-  { id: 'calm', labelEn: 'Calm', labelLt: 'Ramus(-i)', zone: 'optimal' },
-  { id: 'focused', labelEn: 'Focused', labelLt: 'Susikaupęs(-usi)', zone: 'optimal' },
-  { id: 'grounded', labelEn: 'Grounded', labelLt: 'Įsižeminęs(-usi)', zone: 'optimal' },
-  { id: 'grateful', labelEn: 'Grateful', labelLt: 'Dėkingas(-a)', zone: 'optimal' },
-  { id: 'connected', labelEn: 'Connected', labelLt: 'Jaučiantis ryšį', zone: 'optimal' },
-  { id: 'numb', labelEn: 'Numb', labelLt: 'Nutirpęs(-usi)', zone: 'hypo' },
-  { id: 'exhausted', labelEn: 'Exhausted', labelLt: 'Išsekęs(-usi)', zone: 'hypo' },
-  { id: 'sad', labelEn: 'Low / Sad', labelLt: 'Nuliūdęs(-usi)', zone: 'hypo' },
-  { id: 'disconnected', labelEn: 'Disconnected', labelLt: 'Atsiribojęs(-usi)', zone: 'hypo' },
-  { id: 'brainfog', labelEn: 'Brain Fog', labelLt: 'Smegenų rūkas', zone: 'hypo' }
-];
-
-const SOMATIC_TAGS = [
-  { id: 'tight_chest', labelEn: 'Tight Chest', labelLt: 'Spaudimas krūtinėje' },
-  { id: 'racing_heart', labelEn: 'Racing Heart', labelLt: 'Greitas širdies plakimas' },
-  { id: 'clenched_jaw', labelEn: 'Clenched Jaw', labelLt: 'Sučiaupti žandikauliai' },
-  { id: 'shallow_breath', labelEn: 'Shallow Breathing', labelLt: 'Paviršinis kvėpavimas' },
-  { id: 'relaxed_body', labelEn: 'Relaxed Muscles', labelLt: 'Atsipalaidavę raumenys' },
-  { id: 'steady_breath', labelEn: 'Steady Breath', labelLt: 'Tolygus kvėpavimas' },
-  { id: 'warmth', labelEn: 'Warmth in Core', labelLt: 'Šiluma kūne' },
-  { id: 'heavy_limbs', labelEn: 'Heavy Limbs', labelLt: 'Sunkios galūnės' },
-  { id: 'cold_hands', labelEn: 'Cold Hands/Feet', labelLt: 'Šaltos rankos / pėdos' },
-  { id: 'stomach_knot', labelEn: 'Stomach Knots', labelLt: 'Gėlimas pilve' },
-  { id: 'headache', labelEn: 'Head Pressure', labelLt: 'Spaudimas galvoje' }
-];
-
-const TIME_SLOTS = [
+// 3 Time Slot definitions with boundary hours
+const SLOT_CONFIGS = [
   {
     id: 'morning',
-    labelEn: 'Morning',
-    labelLt: 'Rytas',
-    timeEn: '06:00 - 11:59',
+    nameEn: 'Morning',
+    nameLt: 'Rytas',
+    timeRangeEn: '06:00 - 11:59',
     icon: Sunrise,
     startHour: 6,
-    endHour: 12
+    endHour: 12,
+    order: 0
   },
   {
     id: 'midday',
-    labelEn: 'Midday',
-    labelLt: 'Diena',
-    timeEn: '12:00 - 17:59',
+    nameEn: 'Midday',
+    nameLt: 'Diena',
+    timeRangeEn: '12:00 - 17:59',
     icon: Sun,
     startHour: 12,
-    endHour: 18
+    endHour: 18,
+    order: 1
   },
   {
     id: 'evening',
-    labelEn: 'Evening',
-    labelLt: 'Vakaras',
-    timeEn: '18:00 - 23:59',
+    nameEn: 'Evening',
+    nameLt: 'Vakaras',
+    timeRangeEn: '18:00 - 23:59',
     icon: Sunset,
     startHour: 18,
-    endHour: 24
+    endHour: 24,
+    order: 2
   }
 ];
 
-function getZoneForLevel(level) {
-  if (level >= 8) return ZONES.HYPER;
-  if (level >= 4) return ZONES.OPTIMAL;
-  return ZONES.HYPO;
-}
+const ZONES = {
+  HYPO: {
+    id: 'hypo',
+    range: [1, 2, 3],
+    shortName: 'Hypoarousal',
+    nameEn: 'Lower Zone: Hypoarousal',
+    nameLt: 'Apatinė zona: Hipo-sujaudinimas',
+    subtitleEn: 'Freeze / Collapse / Numbness / Exhaustion',
+    subtitleLt: 'Sustingimas / Išsekimas / Nutirpimas',
+    bgBadge: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/70 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800',
+    barColor: 'from-indigo-500 to-blue-500',
+    cardBg: 'bg-gradient-to-br from-indigo-50/90 to-blue-50/60 dark:from-indigo-950/40 dark:to-blue-950/30 border-indigo-200 dark:border-indigo-800/80',
+    btnActive: 'bg-indigo-600 text-white ring-2 ring-indigo-400 shadow-lg shadow-indigo-500/30 scale-105',
+    btnDefault: 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-300 dark:hover:bg-indigo-900/60',
+    descEn: 'Dorsal Vagal Shutdown. Low neurological energy, brain fog, apathy, feeling empty, numb, or disconnected.',
+    descLt: 'Dorsalinės klajoklio nervo šakos reakcija. Žema neurologinė energija, smegenų rūkas, pasyvumas, išsekimas.',
+    physioEn: 'Up-regulate gently: Rhythmic bilateral movement, splash lukewarm water on face, light stretching, sensory stimulation (citrus/lavender, humming).',
+    physioLt: 'Švelnus aktyvinimas: Ritmiški judesiai, šlakstyti veidą vandeniu, lengvas tempimas, pojūčių žadinimas.'
+  },
+  OPTIMAL: {
+    id: 'optimal',
+    range: [4, 5, 6, 7],
+    shortName: 'Optimal Window',
+    nameEn: 'Middle Zone: Optimal Tolerance Window',
+    nameLt: 'Vidurinė zona: Optimali tolerancijos ribų zona',
+    subtitleEn: 'Grounded / Calm / Present / Emotionally Regulated',
+    subtitleLt: 'Ramybė / Įsižeminimas / Lankstumas',
+    bgBadge: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
+    barColor: 'from-emerald-500 to-teal-500',
+    cardBg: 'bg-gradient-to-br from-emerald-50/90 to-teal-50/60 dark:from-emerald-950/40 dark:to-teal-950/30 border-emerald-200 dark:border-emerald-800/80',
+    btnActive: 'bg-emerald-600 text-white ring-2 ring-emerald-400 shadow-lg shadow-emerald-500/30 scale-105',
+    btnDefault: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/60',
+    descEn: 'Ventral Vagal Social Engagement. Balanced autonomic nervous system, cognitive clarity, emotional safety, curiosity.',
+    descLt: 'Ventralinės klajoklio nervo šakos veikla. Kūno saugumas, aiškus mąstymas, emociškai tvari būsena.',
+    physioEn: 'Maintain & Nourish: Mindful deep breathing, creative tasks, meaningful social engagement, gratitude journaling.',
+    physioLt: 'Palaikymas: Dėmesingas kvėpavimas, kūryba, bendravimas, dėkingumas.'
+  },
+  HYPER: {
+    id: 'hyper',
+    range: [8, 9, 10],
+    shortName: 'Hyperarousal',
+    nameEn: 'Upper Zone: Hyperarousal',
+    nameLt: 'Viršutinė zona: Hiper-sujaudinimas',
+    subtitleEn: 'Fight / Flight / Anxiety / Agitation / Overwhelm',
+    subtitleLt: 'Kova / Bėgimas / Nerimas / Pyktis',
+    bgBadge: 'bg-rose-100 text-rose-800 dark:bg-rose-950/70 dark:text-rose-300 border-rose-200 dark:border-rose-800',
+    barColor: 'from-amber-500 to-rose-600',
+    cardBg: 'bg-gradient-to-br from-amber-50/90 to-rose-50/60 dark:from-amber-950/40 dark:to-rose-950/30 border-rose-200 dark:border-rose-800/80',
+    btnActive: 'bg-rose-600 text-white ring-2 ring-rose-400 shadow-lg shadow-rose-500/30 scale-105',
+    btnDefault: 'bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-900/60',
+    descEn: 'Sympathetic Nervous System Activation. Fight or flight, racing thoughts, muscle tension, panic, hyper-vigilance.',
+    descLt: 'Simpatinės nervų sistemos suaktyvėjimas. Greitas širdies plakimas, įtampa, nerimastingos mintys.',
+    physioEn: 'Down-regulate: Extended exhales (4-7-8 breathing), cold water/ice pack on chest, weighted blanket, wall-sit grounding.',
+    physioLt: 'Lėtinimas: Ilgesni iškvėpimai (4-7-8 kvėpavimas), šaltas vanduo, sunkumo spaudimas kūne.'
+  }
+};
 
-function getCurrentTimeSlotId() {
-  const hour = new Date().getHours();
-  if (hour >= 6 && hour < 12) return 'morning';
-  if (hour >= 12 && hour < 18) return 'midday';
-  return 'evening';
+function getZoneByScore(score) {
+  if (typeof score !== 'number' || isNaN(score)) return null;
+  if (score >= 8) return ZONES.HYPER;
+  if (score >= 4) return ZONES.OPTIMAL;
+  return ZONES.HYPO;
 }
 
 function formatDateISO(date) {
@@ -179,1376 +163,1652 @@ function formatDateISO(date) {
   return `${year}-${month}-${day}`;
 }
 
+function getCurrentTimeFormatted() {
+  const now = new Date();
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  return `${hours}:${minutes}`;
+}
+
+function detectSlotFromSystemTime() {
+  const hour = new Date().getHours();
+  if (hour >= 6 && hour < 12) return 'morning';
+  if (hour >= 12 && hour < 18) return 'midday';
+  return 'evening';
+}
+
 function formatDisplayDate(dateStr, lang = 'en') {
-  const date = new Date(dateStr + 'T00:00:00');
+  if (!dateStr) return '';
+  const [y, m, d] = dateStr.split('-');
+  const date = new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
   if (isNaN(date.getTime())) return dateStr;
-  
+
   const todayStr = formatDateISO(new Date());
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
   const yesterdayStr = formatDateISO(yesterday);
 
-  if (dateStr === todayStr) {
-    return lang === 'lt' ? 'Šiandien' : 'Today';
-  } else if (dateStr === yesterdayStr) {
-    return lang === 'lt' ? 'Vakar' : 'Yesterday';
-  }
+  if (dateStr === todayStr) return lang === 'lt' ? 'Šiandien' : 'Today';
+  if (dateStr === yesterdayStr) return lang === 'lt' ? 'Vakar' : 'Yesterday';
 
-  const options = { weekday: 'short', month: 'short', day: 'numeric' };
+  const options = { month: 'short', day: 'numeric' };
   return date.toLocaleDateString(lang === 'lt' ? 'lt-LT' : 'en-US', options);
 }
 
-function generateSampleData() {
-  const data = {};
+const loadXLSXLibrary = () => {
+  return new Promise((resolve, reject) => {
+    if (window.XLSX) {
+      resolve(window.XLSX);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    script.async = true;
+    script.onload = () => resolve(window.XLSX);
+    script.onerror = () => reject(new Error('Failed to load SheetJS XLSX script'));
+    document.head.appendChild(script);
+  });
+};
+
+function generateDemoData() {
+  const records = [];
   const today = new Date();
-  
-  const sampleEmotions = {
-    hyper: ['anxious', 'restless', 'overwhelmed', 'frustrated'],
-    optimal: ['calm', 'focused', 'grounded', 'grateful', 'connected'],
-    hypo: ['numb', 'exhausted', 'sad', 'brainfog', 'disconnected']
-  };
 
-  const sampleSomatics = {
-    hyper: ['tight_chest', 'racing_heart', 'shallow_breath'],
-    optimal: ['relaxed_body', 'steady_breath', 'warmth'],
-    hypo: ['heavy_limbs', 'cold_hands', 'stomach_knot']
-  };
-
-  const sampleNotes = [
-    'Busy morning meeting with tight deadlines.',
-    'Enjoyed a peaceful walk in the park during lunch break.',
-    'Late night scrolling made me feel tired and heavy.',
-    'Practiced 5-4-3-2-1 grounding after feeling overwhelmed.',
-    'Felt very productive and connected with colleagues.',
-    'Slept poorly, feeling low energy and brain fog.',
-    'Great yoga session, felt grounded and centered.'
-  ];
-
+  // Create 14 realistic historical days
   for (let i = 0; i < 14; i++) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
     const dateStr = formatDateISO(d);
-    data[dateStr] = {};
 
-    TIME_SLOTS.forEach((slot, slotIdx) => {
-      // Create plausible variation: morning usually optimal/hypo, midday optimal/hyper, evening mixed
-      let level;
-      const rand = Math.random();
-      if (i === 0 && slotIdx > TIME_SLOTS.findIndex(s => s.id === getCurrentTimeSlotId())) {
-        // Skip future slots for today
-        return;
-      }
+    let morningScore, morningTime, morningNotes;
+    let middayScore, middayTime, middayNotes;
+    let eveningScore, eveningTime, eveningNotes;
 
-      if (rand > 0.35) {
-        // Optimal
-        level = Math.floor(Math.random() * 4) + 4; // 4-7
-      } else if (rand > 0.18) {
-        // Hyper
-        level = Math.floor(Math.random() * 3) + 8; // 8-10
-      } else {
-        // Hypo
-        level = Math.floor(Math.random() * 3) + 1; // 1-3
-      }
+    if (i === 0) {
+      // Today: Morning and Midday logged, Evening pending/missed
+      morningScore = 6;
+      morningTime = '08:15';
+      morningNotes = 'Slept well, felt calm';
+      middayScore = 8;
+      middayTime = '13:30';
+      middayNotes = 'Work deadline stress';
+      eveningScore = 'MISSED';
+      eveningTime = 'MISSED';
+      eveningNotes = '';
+    } else if (i === 1) {
+      // Yesterday: Morning missed, Midday & Evening logged
+      morningScore = 'MISSED';
+      morningTime = 'MISSED';
+      morningNotes = '';
+      middayScore = 5;
+      middayTime = '14:00';
+      middayNotes = 'Lunch walk helped balance';
+      eveningScore = 4;
+      eveningTime = '20:45';
+      eveningNotes = 'Relaxing reading session';
+    } else if (i === 2) {
+      // Fully optimal day
+      morningScore = 7;
+      morningTime = '07:45';
+      morningNotes = 'Morning tea & breathing';
+      middayScore = 6;
+      middayTime = '12:30';
+      middayNotes = 'Productive team sync';
+      eveningScore = 5;
+      eveningTime = '21:15';
+      eveningNotes = 'Grounded evening';
+    } else if (i === 3) {
+      // High hyperarousal day
+      morningScore = 'MISSED';
+      morningTime = 'MISSED';
+      morningNotes = '';
+      middayScore = 9;
+      middayTime = '15:10';
+      middayNotes = 'Panic surge before presentation';
+      eveningScore = 8;
+      eveningTime = '19:50';
+      eveningNotes = '4-7-8 breathing exercise used';
+    } else if (i === 4) {
+      // Hypoarousal / exhausted day
+      morningScore = 2;
+      morningTime = '09:10';
+      morningNotes = 'Heavy brain fog & apathy';
+      middayScore = 3;
+      middayTime = '13:15';
+      middayNotes = 'Slow light walk outside';
+      eveningScore = 'MISSED';
+      eveningTime = 'MISSED';
+      eveningNotes = '';
+    } else if (i === 5) {
+      morningScore = 5;
+      morningTime = '08:00';
+      morningNotes = 'Steady start';
+      middayScore = 'MISSED';
+      middayTime = 'MISSED';
+      middayNotes = '';
+      eveningScore = 6;
+      eveningTime = '21:00';
+      eveningNotes = 'Grounded';
+    } else {
+      // Randomized realistic historical pattern
+      const rM = Math.random();
+      morningScore = rM > 0.3 ? Math.floor(Math.random() * 5) + 3 : 'MISSED';
+      morningTime = morningScore !== 'MISSED' ? '08:30' : 'MISSED';
+      morningNotes = morningScore !== 'MISSED' ? 'Morning check-in' : '';
 
-      const zoneKey = level >= 8 ? 'hyper' : level >= 4 ? 'optimal' : 'hypo';
-      const pickedEmotions = [sampleEmotions[zoneKey][Math.floor(Math.random() * sampleEmotions[zoneKey].length)]];
-      const pickedSomatics = [sampleSomatics[zoneKey][Math.floor(Math.random() * sampleSomatics[zoneKey].length)]];
+      const rMid = Math.random();
+      middayScore = rMid > 0.25 ? Math.floor(Math.random() * 6) + 3 : 'MISSED';
+      middayTime = middayScore !== 'MISSED' ? '13:15' : 'MISSED';
+      middayNotes = middayScore !== 'MISSED' ? 'Midday check-in' : '';
 
-      data[dateStr][slot.id] = {
-        level,
-        emotions: pickedEmotions,
-        somatics: pickedSomatics,
-        note: sampleNotes[Math.floor(Math.random() * sampleNotes.length)],
-        timestamp: new Date(d.getFullYear(), d.getMonth(), d.getDate(), slot.startHour + 2).toISOString()
-      };
+      const rEve = Math.random();
+      eveningScore = rEve > 0.35 ? Math.floor(Math.random() * 6) + 3 : 'MISSED';
+      eveningTime = eveningScore !== 'MISSED' ? '20:30' : 'MISSED';
+      eveningNotes = eveningScore !== 'MISSED' ? 'Evening check-in' : '';
+    }
+
+    records.push({
+      date: dateStr,
+      morningScore,
+      morningTime,
+      morningNotes: morningNotes || '',
+      middayScore,
+      middayTime,
+      middayNotes: middayNotes || '',
+      eveningScore,
+      eveningTime,
+      eveningNotes: eveningNotes || '',
+      updatedAt: new Date(d.getTime() + 18000000).toISOString()
     });
   }
-  return data;
+
+  return records.sort((a, b) => b.date.localeCompare(a.date));
 }
 
 export default function WindowOfToleranceApp() {
   const [lang, setLang] = useState('en'); // 'en' | 'lt'
-  const [activeTab, setActiveTab] = useState('log'); // 'log' | 'analytics' | 'grounding' | 'guide'
-  
-  // Storage state
-  const [logs, setLogs] = useState(() => {
-    try {
-      const saved = localStorage.getItem('wot_daily_logs_v1');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.error('Error loading localStorage logs', e);
-    }
-    return {};
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
 
-  // Selected date & slot state
-  const [selectedDate, setSelectedDate] = useState(() => formatDateISO(new Date()));
-  const [selectedSlot, setSelectedSlot] = useState(() => getCurrentTimeSlotId());
-
-  // Form State
-  const [level, setLevel] = useState(5);
-  const [selectedEmotions, setSelectedEmotions] = useState([]);
-  const [selectedSomatics, setSelectedSomatics] = useState([]);
-  const [noteText, setNoteText] = useState('');
-  const [saveSuccess, setSaveSuccess] = useState(false);
-
-  // Sync Form State when selectedDate or selectedSlot changes
-  useEffect(() => {
-    const dayEntry = logs[selectedDate]?.[selectedSlot];
-    if (dayEntry) {
-      setLevel(dayEntry.level || 5);
-      setSelectedEmotions(dayEntry.emotions || []);
-      setSelectedSomatics(dayEntry.somatics || []);
-      setNoteText(dayEntry.note || '');
-    } else {
-      // Default initial states for fresh entry
-      setLevel(5);
-      setSelectedEmotions([]);
-      setSelectedSomatics([]);
-      setNoteText('');
+  // Flat 7-column records state
+  const [records, setRecords] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_RECORDS);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.error('Failed reading records from LocalStorage', e);
     }
-  }, [selectedDate, selectedSlot, logs]);
+    return generateDemoData();
+  });
 
-  // Save to LocalStorage on logs state update
+  // GitHub REST API Settings State
+  const [ghConfig, setGhConfig] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_GITHUB);
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error('Failed reading GitHub settings', e);
+    }
+    return {
+      token: '',
+      owner: '',
+      repo: '',
+      path: 'data/tolerance_window_logs.xlsx',
+      branch: 'main'
+    };
+  });
+
+  // Chart Controls State (Phase 4)
+  const [timeframe, setTimeframe] = useState('7d'); // '7d' | '30d' | 'all'
+  const [connectMissedLines, setConnectMissedLines] = useState(true);
+
+  // Form Logging Inputs State
+  const [selectedDate, setSelectedDate] = useState(() => formatDateISO(new Date()));
+  const [selectedSlot, setSelectedSlot] = useState(() => detectSlotFromSystemTime());
+  const [inputTime, setInputTime] = useState(() => getCurrentTimeFormatted());
+  const [selectedScore, setSelectedScore] = useState(5);
+  const [inputNotes, setInputNotes] = useState('');
+
+  // Table Filters & Search
+  const [searchQuery, setSearchQuery] = useState('');
+  const [zoneFilter, setZoneFilter] = useState('all'); // 'all' | 'missed' | 'hypo' | 'optimal' | 'hyper'
+
+  // Modals & UI States
+  const [isGhModalOpen, setIsGhModalOpen] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState(null);
+  const [toastMessage, setToastMessage] = useState(null);
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', action: null });
+  
+  // Row Editing Modal State
+  const [editRowData, setEditRowData] = useState(null);
+
   useEffect(() => {
     try {
-      localStorage.setItem('wot_daily_logs_v1', JSON.stringify(logs));
+      localStorage.setItem(STORAGE_KEY_RECORDS, JSON.stringify(records));
     } catch (e) {
-      console.error('Failed to save to localStorage', e);
+      console.error('Failed saving records', e);
     }
-  }, [logs]);
+  }, [records]);
 
-  const handleSaveEntry = () => {
-    const entryData = {
-      level,
-      emotions: selectedEmotions,
-      somatics: selectedSomatics,
-      note: noteText,
-      timestamp: new Date().toISOString()
-    };
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_GITHUB, JSON.stringify(ghConfig));
+    } catch (e) {
+      console.error('Failed saving GitHub settings', e);
+    }
+  }, [ghConfig]);
 
-    setLogs(prev => ({
-      ...prev,
-      [selectedDate]: {
-        ...(prev[selectedDate] || {}),
-        [selectedSlot]: entryData
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode]);
+
+  useEffect(() => {
+    setInputTime(getCurrentTimeFormatted());
+  }, [selectedSlot]);
+
+  const showToast = (msg, type = 'success') => {
+    setToastMessage({ msg, type });
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const handleSaveEntry = (e) => {
+    e.preventDefault();
+
+    setRecords(prevRecords => {
+      const existingIdx = prevRecords.findIndex(r => r.date === selectedDate);
+      
+      let currentRecord = existingIdx >= 0
+        ? { ...prevRecords[existingIdx] }
+        : {
+            date: selectedDate,
+            morningScore: 'MISSED',
+            morningTime: 'MISSED',
+            morningNotes: '',
+            middayScore: 'MISSED',
+            middayTime: 'MISSED',
+            middayNotes: '',
+            eveningScore: 'MISSED',
+            eveningTime: 'MISSED',
+            eveningNotes: ''
+          };
+
+      const targetSlotConfig = SLOT_CONFIGS.find(s => s.id === selectedSlot);
+      const targetOrder = targetSlotConfig ? targetSlotConfig.order : 0;
+
+      // Enforce auto-resolution to "MISSED" for all earlier unlogged slots
+      SLOT_CONFIGS.forEach(slot => {
+        if (slot.order < targetOrder) {
+          const scoreKey = `${slot.id}Score`;
+          const timeKey = `${slot.id}Time`;
+
+          if (
+            currentRecord[scoreKey] === undefined ||
+            currentRecord[scoreKey] === null ||
+            currentRecord[scoreKey] === ''
+          ) {
+            currentRecord[scoreKey] = 'MISSED';
+            currentRecord[timeKey] = 'MISSED';
+          }
+        }
+      });
+
+      // Update target slot
+      currentRecord[`${selectedSlot}Score`] = Number(selectedScore);
+      currentRecord[`${selectedSlot}Time`] = inputTime || getCurrentTimeFormatted();
+      currentRecord[`${selectedSlot}Notes`] = inputNotes.trim();
+      currentRecord.updatedAt = new Date().toISOString();
+
+      let updated;
+      if (existingIdx >= 0) {
+        updated = [...prevRecords];
+        updated[existingIdx] = currentRecord;
+      } else {
+        updated = [currentRecord, ...prevRecords];
       }
+
+      return updated.sort((a, b) => b.date.localeCompare(a.date));
+    });
+
+    setInputNotes('');
+    const slotLabel = SLOT_CONFIGS.find(s => s.id === selectedSlot)?.[lang === 'lt' ? 'nameLt' : 'nameEn'];
+    showToast(
+      lang === 'lt'
+        ? `Įrašas išsaugotas (${selectedDate} - ${slotLabel})`
+        : `Entry logged for ${selectedDate} (${slotLabel})`
+    );
+  };
+
+  const generateXLSXBase64 = async (dataRecords) => {
+    const XLSX = await loadXLSXLibrary();
+
+    const exportRows = dataRecords.map(r => ({
+      'Date': r.date,
+      'Morning Score': r.morningScore ?? 'MISSED',
+      'Morning Time': r.morningTime ?? 'MISSED',
+      'Morning Notes': r.morningNotes || '',
+      'Midday Score': r.middayScore ?? 'MISSED',
+      'Midday Time': r.middayTime ?? 'MISSED',
+      'Midday Notes': r.middayNotes || '',
+      'Evening Score': r.eveningScore ?? 'MISSED',
+      'Evening Time': r.eveningTime ?? 'MISSED',
+      'Evening Notes': r.eveningNotes || '',
+      'Updated At': r.updatedAt || new Date().toISOString()
     }));
 
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 2200);
+    const worksheet = XLSX.utils.json_to_sheet(exportRows);
+    worksheet['!cols'] = [
+      { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 25 },
+      { wch: 14 }, { wch: 14 }, { wch: 25 },
+      { wch: 14 }, { wch: 14 }, { wch: 25 },
+      { wch: 22 }
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Tolerance Logs');
+
+    return XLSX.write(workbook, { bookType: 'xlsx', type: 'base64' });
   };
 
-  const handleDeleteSlotEntry = (slotId) => {
-    setLogs(prev => {
-      const updatedDate = { ...(prev[selectedDate] || {}) };
-      delete updatedDate[slotId];
-      if (Object.keys(updatedDate).length === 0) {
-        const newLogs = { ...prev };
-        delete newLogs[selectedDate];
-        return newLogs;
+  const handleDownloadXLSX = async () => {
+    try {
+      const base64 = await generateXLSXBase64(records);
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
       }
-      return {
-        ...prev,
-        [selectedDate]: updatedDate
-      };
-    });
-  };
-
-  const handleToggleEmotion = (id) => {
-    setSelectedEmotions(prev => 
-      prev.includes(id) ? prev.filter(e => e !== id) : [...prev, id]
-    );
-  };
-
-  const handleToggleSomatic = (id) => {
-    setSelectedSomatics(prev => 
-      prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]
-    );
-  };
-
-  const handleDateChange = (offset) => {
-    const cur = new Date(selectedDate + 'T00:00:00');
-    cur.setDate(cur.getDate() + offset);
-    setSelectedDate(formatDateISO(cur));
-  };
-
-  const handleLoadSampleData = () => {
-    const samples = generateSampleData();
-    setLogs(samples);
-  };
-
-  const handleClearData = () => {
-    if (window.confirm(lang === 'lt' ? 'Ar tikrai norite ištrinti visus duomenis?' : 'Are you sure you want to clear all log history?')) {
-      setLogs({});
+      const blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Tolerance_Window_Logs_${selectedDate}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      showToast(lang === 'lt' ? 'Excel (.xlsx) failas parsisiųstas!' : 'Excel (.xlsx) file downloaded!');
+    } catch (err) {
+      console.error(err);
+      showToast(lang === 'lt' ? 'Klaida generuojant Excel' : 'Failed to export Excel file', 'error');
     }
   };
 
-  const handleExportJSON = () => {
-    const blob = new Blob([JSON.stringify(logs, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `window-of-tolerance-data-${selectedDate}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  const handlePushToGitHub = async () => {
+    if (!ghConfig.token || !ghConfig.owner || !ghConfig.repo) {
+      showToast(lang === 'lt' ? 'Įveskite GitHub parametrus' : 'Please configure GitHub settings first', 'error');
+      setIsGhModalOpen(true);
+      return;
+    }
 
-  const handleImportJSON = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
+    setIsSyncing(true);
+    try {
+      const base64Content = await generateXLSXBase64(records);
+      const url = `https://api.github.com/repos/${ghConfig.owner}/${ghConfig.repo}/contents/${ghConfig.path}`;
+      const branch = ghConfig.branch || 'main';
+
+      // 1. Fetch current file to retrieve existing SHA if present
+      let sha = null;
       try {
-        const parsed = JSON.parse(event.target.result);
-        if (typeof parsed === 'object') {
-          setLogs(parsed);
-          alert(lang === 'lt' ? 'Duomenys sėkmingai įkelti!' : 'Data successfully imported!');
+        const getRes = await fetch(`${url}?ref=${branch}`, {
+          headers: {
+            'Authorization': `Bearer ${ghConfig.token}`,
+            'Accept': 'application/vnd.github.v3+json'
+          }
+        });
+        if (getRes.ok) {
+          const getData = await getRes.json();
+          sha = getData.sha;
         }
-      } catch (err) {
-        alert(lang === 'lt' ? 'Neteisingas JSON failas.' : 'Invalid JSON file format.');
+      } catch (e) {
+        console.log('File does not exist on remote yet, will create new.');
       }
-    };
-    reader.readAsText(file);
+
+      // 2. PUT request to create or update file
+      const payload = {
+        message: `Sync Window of Tolerance logs (${records.length} days)`,
+        content: base64Content,
+        branch
+      };
+      if (sha) payload.sha = sha;
+
+      const putRes = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${ghConfig.token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/vnd.github.v3+json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!putRes.ok) {
+        const errJson = await putRes.json();
+        throw new Error(errJson.message || 'GitHub API rejected commit');
+      }
+
+      setLastSyncTime(new Date().toLocaleTimeString());
+      showToast(lang === 'lt' ? 'Sėkmingai sinchronizuota su GitHub!' : 'Successfully synced .xlsx to GitHub!');
+    } catch (err) {
+      console.error(err);
+      showToast(`GitHub Sync Error: ${err.message}`, 'error');
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
-  const currentZone = getZoneForLevel(level);
-
-  const analyticsData = useMemo(() => {
-    let totalEntries = 0;
-    let hyperCount = 0;
-    let optimalCount = 0;
-    let hypoCount = 0;
-    const emotionFreq = {};
-
-    // Get last 14 days dates array
-    const last14Days = [];
-    const today = new Date();
-    for (let i = 13; i >= 0; i--) {
-      const d = new Date(today);
-      d.setDate(d.getDate() - i);
-      last14Days.push(formatDateISO(d));
+  const handlePullFromGitHub = async () => {
+    if (!ghConfig.token || !ghConfig.owner || !ghConfig.repo) {
+      showToast(lang === 'lt' ? 'Įveskite GitHub parametrus' : 'Please configure GitHub settings first', 'error');
+      setIsGhModalOpen(true);
+      return;
     }
 
-    const timeline = last14Days.map(dateStr => {
-      const daySlots = logs[dateStr] || {};
-      return {
-        dateStr,
-        displayDate: formatDisplayDate(dateStr, lang),
-        morning: daySlots.morning || null,
-        midday: daySlots.midday || null,
-        evening: daySlots.evening || null
+    setIsSyncing(true);
+    try {
+      const XLSX = await loadXLSXLibrary();
+      const branch = ghConfig.branch || 'main';
+      const url = `https://api.github.com/repos/${ghConfig.owner}/${ghConfig.repo}/contents/${ghConfig.path}?ref=${branch}`;
+
+      const res = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${ghConfig.token}`,
+          'Accept': 'application/vnd.github.v3+json'
+        }
+      });
+
+      if (!res.ok) {
+        throw new Error('Remote file not found or invalid GitHub credentials.');
+      }
+
+      const fileData = await res.json();
+      const cleanBase64 = fileData.content.replace(/\s/g, '');
+      const binary = atob(cleanBase64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+
+      const workbook = XLSX.read(bytes.buffer, { type: 'array' });
+      const sheetName = workbook.SheetNames[0];
+      const jsonRows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+      const parseScore = (v) => {
+        if (v === 'MISSED' || v === undefined || v === null || v === '') return 'MISSED';
+        const n = Number(v);
+        return isNaN(n) ? 'MISSED' : n;
       };
-    });
 
-    Object.values(logs).forEach(day => {
-      Object.values(day).forEach(entry => {
-        if (!entry || typeof entry.level !== 'number') return;
-        totalEntries++;
-        if (entry.level >= 8) hyperCount++;
-        else if (entry.level >= 4) optimalCount++;
-        else hypoCount++;
+      const importedRecords = jsonRows.map(row => ({
+        date: String(row['Date'] || row['date'] || ''),
+        morningScore: parseScore(row['Morning Score']),
+        morningTime: String(row['Morning Time'] || 'MISSED'),
+        morningNotes: String(row['Morning Notes'] || ''),
+        middayScore: parseScore(row['Midday Score']),
+        middayTime: String(row['Midday Time'] || 'MISSED'),
+        middayNotes: String(row['Midday Notes'] || ''),
+        eveningScore: parseScore(row['Evening Score']),
+        eveningTime: String(row['Evening Time'] || 'MISSED'),
+        eveningNotes: String(row['Evening Notes'] || ''),
+        updatedAt: row['Updated At'] || new Date().toISOString()
+      })).filter(r => r.date);
 
-        if (Array.isArray(entry.emotions)) {
-          entry.emotions.forEach(eId => {
-            emotionFreq[eId] = (emotionFreq[eId] || 0) + 1;
+      setRecords(importedRecords.sort((a, b) => b.date.localeCompare(a.date)));
+      setLastSyncTime(new Date().toLocaleTimeString());
+      showToast(lang === 'lt' ? `Atsisiųsta ${importedRecords.length} dienų iš GitHub!` : `Downloaded ${importedRecords.length} days from GitHub!`);
+    } catch (err) {
+      console.error(err);
+      showToast(`GitHub Pull Error: ${err.message}`, 'error');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const chartTimelineData = useMemo(() => {
+    // Sort chronologically ascending for timeline
+    const sorted = [...records].sort((a, b) => a.date.localeCompare(b.date));
+
+    let sliced = sorted;
+    if (timeframe === '7d') {
+      sliced = sorted.slice(-7);
+    } else if (timeframe === '30d') {
+      sliced = sorted.slice(-30);
+    }
+
+    const points = [];
+    sliced.forEach((r) => {
+      SLOT_CONFIGS.forEach((slot) => {
+        const scoreVal = r[`${slot.id}Score`];
+        const timeVal = r[`${slot.id}Time`];
+        const notesVal = r[`${slot.id}Notes`];
+
+        if (scoreVal !== undefined && scoreVal !== null && scoreVal !== '') {
+          const isMissed = scoreVal === 'MISSED';
+          const numericScore = typeof scoreVal === 'number' ? scoreVal : null;
+          const shortDate = r.date.slice(5); // "MM-DD"
+          const slotAbbr = slot.id === 'morning' ? 'Morn' : slot.id === 'midday' ? 'Mid' : 'Eve';
+
+          points.push({
+            date: r.date,
+            shortDate,
+            slotId: slot.id,
+            slotName: slot.nameEn,
+            timePointLabel: `${shortDate} - ${slotAbbr}`,
+            numericScore,
+            isMissed,
+            // For continuous Recharts connection when missed points toggle is ON
+            displayChartVal: isMissed ? (connectMissedLines ? 5 : null) : numericScore,
+            time: timeVal || 'MISSED',
+            notes: notesVal || ''
           });
         }
       });
     });
 
-    const optimalPct = totalEntries ? Math.round((optimalCount / totalEntries) * 100) : 0;
-    const hyperPct = totalEntries ? Math.round((hyperCount / totalEntries) * 100) : 0;
-    const hypoPct = totalEntries ? Math.round((hypoCount / totalEntries) * 100) : 0;
+    return points;
+  }, [records, timeframe, connectMissedLines]);
+
+  const analyticsKPIs = useMemo(() => {
+    let totalLogged = 0;
+    let totalMissed = 0;
+    let sumScore = 0;
+    let optimalCount = 0;
+
+    records.forEach(r => {
+      [r.morningScore, r.middayScore, r.eveningScore].forEach(s => {
+        if (s === 'MISSED') {
+          totalMissed++;
+        } else if (typeof s === 'number') {
+          totalLogged++;
+          sumScore += s;
+          if (s >= 4 && s <= 7) {
+            optimalCount++;
+          }
+        }
+      });
+    });
+
+    const totalSlots = totalLogged + totalMissed;
+    const optimalPct = totalLogged > 0 ? Math.round((optimalCount / totalLogged) * 100) : 0;
+    const avgScore = totalLogged > 0 ? (sumScore / totalLogged).toFixed(1) : 'N/A';
+    const complianceRate = totalSlots > 0 ? Math.round((totalLogged / totalSlots) * 100) : 0;
+
+    // Compute active logging streak (consecutive days with at least 1 logged score)
+    let streak = 0;
+    const sortedDates = [...records].sort((a, b) => b.date.localeCompare(a.date));
+    for (const r of sortedDates) {
+      const hasLoggedSlot = [r.morningScore, r.middayScore, r.eveningScore].some(s => typeof s === 'number');
+      if (hasLoggedSlot) {
+        streak++;
+      } else {
+        break;
+      }
+    }
 
     return {
-      totalEntries,
+      totalDays: records.length,
       optimalPct,
-      hyperPct,
-      hypoPct,
-      timeline,
-      emotionFreq
+      avgScore,
+      totalMissed,
+      complianceRate,
+      streak
     };
-  }, [logs, lang]);
+  }, [records]);
+
+  // Data table filtering
+  const filteredRecords = useMemo(() => {
+    return records.filter(r => {
+      const matchesSearch = searchQuery.trim() === '' || r.date.includes(searchQuery.trim());
+      if (!matchesSearch) return false;
+
+      if (zoneFilter === 'all') return true;
+      const scores = [r.morningScore, r.middayScore, r.eveningScore];
+      if (zoneFilter === 'missed') return scores.includes('MISSED');
+      if (zoneFilter === 'hypo') return scores.some(s => typeof s === 'number' && s <= 3);
+      if (zoneFilter === 'optimal') return scores.some(s => typeof s === 'number' && s >= 4 && s <= 7);
+      if (zoneFilter === 'hyper') return scores.some(s => typeof s === 'number' && s >= 8);
+      return true;
+    });
+  }, [records, searchQuery, zoneFilter]);
+
+  const activeZone = getZoneByScore(selectedScore);
+
+  const renderCustomChartDot = (props) => {
+    const { cx, cy, payload } = props;
+    if (cx === undefined || cy === undefined) return null;
+
+    if (payload.isMissed) {
+      return (
+        <g key={`dot-missed-${cx}-${cy}`}>
+          <circle cx={cx} cy={cy} r={6} stroke="#94a3b8" strokeWidth={2} fill="#ffffff" />
+          <circle cx={cx} cy={cy} r={2} fill="#94a3b8" />
+        </g>
+      );
+    }
+
+    let fill = '#10b981'; // optimal
+    if (payload.numericScore <= 3) fill = '#6366f1'; // hypo
+    if (payload.numericScore >= 8) fill = '#f43f5e'; // hyper
+
+    return (
+      <circle
+        key={`dot-val-${cx}-${cy}`}
+        cx={cx}
+        cy={cy}
+        r={5}
+        stroke="#ffffff"
+        strokeWidth={2}
+        fill={fill}
+      />
+    );
+  };
+
+  const CustomChartTooltip = ({ active, payload }) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      const zone = getZoneByScore(data.numericScore);
+
+      return (
+        <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl text-xs space-y-1.5 min-w-[200px]">
+          <div className="flex items-center justify-between font-extrabold border-b border-slate-100 dark:border-slate-800 pb-1.5">
+            <span className="text-slate-900 dark:text-slate-100">{data.date} ({data.slotName})</span>
+            <span className="text-slate-500 font-mono text-[11px]">{data.time}</span>
+          </div>
+
+          {data.isMissed ? (
+            <div className="flex items-center gap-1.5 text-rose-600 dark:text-rose-400 font-bold py-1">
+              <AlertTriangle className="w-4 h-4" />
+              <span>{lang === 'lt' ? 'Slotas praleistas (MISSED)' : 'Slot Missed / Not Logged'}</span>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">{lang === 'lt' ? 'Sujaudinimo lygis:' : 'Arousal Score:'}</span>
+                <span className={`px-2 py-0.5 rounded-md font-extrabold text-xs ${zone?.bgBadge}`}>
+                  {data.numericScore} / 10
+                </span>
+              </div>
+              <div className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                {zone?.shortName}
+              </div>
+              {data.notes && (
+                <p className="mt-1.5 text-slate-600 dark:text-slate-300 italic border-l-2 border-teal-500 pl-2 text-[11px]">
+                  "{data.notes}"
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-300 font-sans pb-16">
+    <div className={`min-h-screen transition-colors duration-200 font-sans ${isDarkMode ? 'dark bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'} pb-20`}>
       
-      {/* HEADER NAVBAR */}
-      <header className="sticky top-0 z-30 backdrop-blur-md bg-white/80 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 px-4 lg:px-8 py-3.5 shadow-sm">
+      {/* HEADER BAR */}
+      <header className="sticky top-0 z-30 backdrop-blur-md bg-white/85 dark:bg-slate-900/85 border-b border-slate-200 dark:border-slate-800 px-4 lg:px-8 py-3.5 shadow-xs">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           
-          {/* Logo & Psychological Framework Title */}
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-teal-500 to-emerald-600 text-white shadow-md shadow-emerald-500/20">
+            <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-teal-500 via-emerald-600 to-indigo-600 text-white shadow-md shadow-emerald-500/20">
               <Brain className="w-6 h-6" />
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight bg-gradient-to-r from-teal-600 via-emerald-600 to-indigo-600 dark:from-teal-400 dark:to-indigo-400 bg-clip-text text-transparent">
-                {lang === 'lt' ? 'Tolerancijos Lango Metodas' : 'Window of Tolerance'}
-              </h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-extrabold tracking-tight bg-gradient-to-r from-teal-600 via-emerald-600 to-indigo-600 dark:from-teal-400 dark:to-indigo-400 bg-clip-text text-transparent">
+                  {lang === 'lt' ? 'Tolerancijos Lango Metodas' : 'Window of Tolerance'}
+                </h1>
+                <span className="px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider rounded-md bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
+                  Phase 4 Analytics
+                </span>
+              </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                {lang === 'lt' ? 'Nervų sistemos būsenos ir emocijų dienoraštis' : 'Nervous System & Emotional State Tracker'}
+                {lang === 'lt'
+                  ? 'Vizualinė analitika, Excel (.xlsx) ir GitHub REST API sinchronizavimas'
+                  : 'Visual Analytics, Excel (.xlsx) Engine & GitHub REST API Sync'}
               </p>
             </div>
           </div>
 
-          {/* Nav Tabs */}
-          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
-            <button
-              onClick={() => setActiveTab('log')}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs sm:text-sm font-semibold rounded-lg transition-all ${
-                activeTab === 'log'
-                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <Activity className="w-4 h-4 text-emerald-500" />
-              <span>{lang === 'lt' ? 'Žurnalas' : 'Daily Logger'}</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('analytics')}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs sm:text-sm font-semibold rounded-lg transition-all ${
-                activeTab === 'analytics'
-                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <PieChart className="w-4 h-4 text-indigo-500" />
-              <span>{lang === 'lt' ? 'Analitika' : 'Analytics'}</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('grounding')}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs sm:text-sm font-semibold rounded-lg transition-all ${
-                activeTab === 'grounding'
-                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <Wind className="w-4 h-4 text-teal-500" />
-              <span>{lang === 'lt' ? 'Įsižeminimas' : 'Grounding'}</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('guide')}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs sm:text-sm font-semibold rounded-lg transition-all ${
-                activeTab === 'guide'
-                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <Info className="w-4 h-4 text-amber-500" />
-              <span>{lang === 'lt' ? 'Gidas' : 'Guide'}</span>
-            </button>
-          </div>
-
-          {/* Action Bar (Language Switch & Data Tools) */}
           <div className="flex items-center gap-2">
+            {/* GitHub Sync Status Badge */}
             <button
-              onClick={() => setLang(l => (l === 'en' ? 'lt' : 'en'))}
-              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
-              title="Toggle Language / Keisti kalbą"
+              onClick={() => setIsGhModalOpen(true)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl border transition ${
+                ghConfig.token
+                  ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100'
+                  : 'bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border-amber-200 dark:border-amber-800 hover:bg-amber-100'
+              }`}
             >
-              <Globe className="w-3.5 h-3.5 text-teal-600" />
+              <Github className="w-3.5 h-3.5" />
+              <span>{ghConfig.token ? 'GitHub Configured' : 'Setup GitHub Sync'}</span>
+              {isSyncing && <RefreshCw className="w-3 h-3 animate-spin text-emerald-600" />}
+            </button>
+
+            {/* Language Switcher */}
+            <button
+              onClick={() => setLang(l => l === 'en' ? 'lt' : 'en')}
+              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition"
+              title="Toggle Language"
+            >
+              <Globe className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
               <span>{lang === 'en' ? 'LT' : 'EN'}</span>
             </button>
 
+            {/* Dark Mode Toggle */}
             <button
-              onClick={handleLoadSampleData}
-              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition"
-              title="Populate test data for testing analytics"
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 transition"
             >
-              <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-              <span>{lang === 'lt' ? 'Pavyzdiniai duomenys' : 'Sample Data'}</span>
+              {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-600" />}
             </button>
           </div>
 
         </div>
       </header>
 
-      {/* MAIN CONTAINER CONTENT */}
-      <main className="max-w-7xl mx-auto px-4 lg:px-8 pt-6">
+      {/* MAIN CONTAINER */}
+      <main className="max-w-7xl mx-auto px-4 lg:px-8 pt-6 space-y-8">
 
-        {/* TAB 1: DAILY LOGGER & INTERACTIVE SCALE */}
-        {activeTab === 'log' && (
-          <div className="space-y-6">
+        {/* TOAST NOTIFICATION FLOATER */}
+        {toastMessage && (
+          <div className={`fixed bottom-5 right-5 z-50 flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-2xl text-xs font-bold border transition-all animate-bounce ${
+            toastMessage.type === 'error'
+              ? 'bg-rose-600 text-white border-rose-700'
+              : toastMessage.type === 'info'
+              ? 'bg-slate-900 text-white border-slate-800'
+              : 'bg-emerald-600 text-white border-emerald-700'
+          }`}>
+            <CheckCircle2 className="w-4 h-4" />
+            <span>{toastMessage.msg}</span>
+          </div>
+        )}
 
-            {/* DATE & SLOT NAVIGATION BAR */}
-            {}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                {lang === 'lt' ? 'Optimalioje Zonoje' : '% Time in Optimal Window'}
+              </span>
+              <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
+                {analyticsKPIs.optimalPct}%
+              </h3>
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                {lang === 'lt' ? 'Įverčiai tarp 4 ir 7' : 'Scores between 4 and 7'}
+              </p>
+            </div>
+            <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400">
+              <Shield className="w-6 h-6" />
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                {lang === 'lt' ? 'Vidutinis Sujaudinimas' : 'Average Emotional Score'}
+              </span>
+              <h3 className="text-2xl font-black text-indigo-600 dark:text-indigo-400 mt-1">
+                {analyticsKPIs.avgScore} <span className="text-xs text-slate-400 font-normal">/ 10</span>
+              </h3>
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                {lang === 'lt' ? 'Registruotų įrašų vidurkis' : 'Average of valid logs'}
+              </p>
+            </div>
+            <div className="p-3 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
+              <Activity className="w-6 h-6" />
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                {lang === 'lt' ? 'Laikymosi Rodiklis' : 'Compliance & Missed'}
+              </span>
+              <h3 className="text-2xl font-black text-teal-600 dark:text-teal-400 mt-1">
+                {analyticsKPIs.complianceRate}%
+              </h3>
+              <p className="text-[10px] text-rose-500 font-semibold mt-0.5">
+                {analyticsKPIs.totalMissed} {lang === 'lt' ? 'praleisti slotai' : 'missed slots total'}
+              </p>
+            </div>
+            <div className="p-3 rounded-2xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400">
+              <TrendingUp className="w-6 h-6" />
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                {lang === 'lt' ? 'Aktyvus Srautas' : 'Logging Streak'}
+              </span>
+              <h3 className="text-2xl font-black text-amber-500 mt-1">
+                {analyticsKPIs.streak} {lang === 'lt' ? 'd' : 'days'}
+              </h3>
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                {lang === 'lt' ? 'Nepertraukiamos dienos' : 'Consecutive daily logs'}
+              </p>
+            </div>
+            <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-500">
+              <Flame className="w-6 h-6" />
+            </div>
+          </div>
+
+        </div>
+
+        {}
+        <section className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-7 shadow-sm border border-slate-200 dark:border-slate-800 space-y-6">
+          
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-5">
+            <div>
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
+                  <BarChart2 className="w-5 h-5" />
+                </div>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                  {lang === 'lt' ? 'Emocinės Būsenos Dinamika (Recharts)' : 'Window of Tolerance Emotional Trend'}
+                </h2>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                {lang === 'lt'
+                  ? 'Chronologinė sujaudinimo kitimo linija su spalviniais fono diapazonais'
+                  : 'Chronological timeline chart mapped over Hyperarousal, Optimal, and Hypoarousal reference bands.'}
+              </p>
+            </div>
+
+            {/* Timeframe & Line Controls */}
+            <div className="flex flex-wrap items-center gap-3">
               
-              {/* Date Controls */}
-              <div className="flex items-center justify-between sm:justify-start gap-2">
-                <button
-                  onClick={() => handleDateChange(-1)}
-                  className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition"
-                  title="Previous Day"
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                </button>
+              {/* Connect Missed Lines Toggle */}
+              <button
+                onClick={() => setConnectMissedLines(!connectMissedLines)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl border transition ${
+                  connectMissedLines
+                    ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-300 dark:border-indigo-800'
+                    : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                }`}
+                title="Toggle connecting lines across missed slots"
+              >
+                {connectMissedLines ? <LinkIcon className="w-3.5 h-3.5" /> : <Unlink className="w-3.5 h-3.5" />}
+                <span>{lang === 'lt' ? 'Sujungti praleistus' : 'Connect Missed Dots'}</span>
+              </button>
 
-                <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60">
-                  <Calendar className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                  <input
-                    type="date"
-                    value={selectedDate}
-                    onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
-                    className="bg-transparent font-semibold text-sm sm:text-base focus:outline-none dark:text-white"
-                  />
-                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400 border-l border-slate-300 dark:border-slate-600 pl-2">
-                    {formatDisplayDate(selectedDate, lang)}
-                  </span>
+              {/* Timeframe Filter Switcher */}
+              <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs font-bold">
+                <button
+                  onClick={() => setTimeframe('7d')}
+                  className={`px-3 py-1 rounded-xl transition ${timeframe === '7d' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs' : 'text-slate-500'}`}
+                >
+                  7 Days
+                </button>
+                <button
+                  onClick={() => setTimeframe('30d')}
+                  className={`px-3 py-1 rounded-xl transition ${timeframe === '30d' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs' : 'text-slate-500'}`}
+                >
+                  30 Days
+                </button>
+                <button
+                  onClick={() => setTimeframe('all')}
+                  className={`px-3 py-1 rounded-xl transition ${timeframe === 'all' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs' : 'text-slate-500'}`}
+                >
+                  All
+                </button>
+              </div>
+
+            </div>
+          </div>
+
+          {/* Zone Legend Indicator Bar */}
+          <div className="grid grid-cols-3 gap-2 text-[11px] font-bold">
+            <div className="flex items-center justify-center gap-1.5 p-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200/60 dark:border-rose-900/50">
+              <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+              <span>Upper: Hyperarousal (8-10)</span>
+            </div>
+            <div className="flex items-center justify-center gap-1.5 p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-900/50">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+              <span>Middle: Optimal Window (4-7)</span>
+            </div>
+            <div className="flex items-center justify-center gap-1.5 p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-900/50">
+              <span className="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+              <span>Lower: Hypoarousal (1-3)</span>
+            </div>
+          </div>
+
+          {/* Recharts Chart Container */}
+          <div className="h-80 w-full pt-2">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartTimelineData} margin={{ top: 10, right: 15, left: -20, bottom: 25 }}>
+                <CartesianGrid strokeDasharray="3 3" opacity={isDarkMode ? 0.15 : 0.4} />
+                
+                <XAxis
+                  dataKey="timePointLabel"
+                  tick={{ fontSize: 10, fill: isDarkMode ? '#94a3b8' : '#64748b' }}
+                  interval="preserveStartEnd"
+                  angle={-25}
+                  textAnchor="end"
+                  height={45}
+                />
+                
+                <YAxis
+                  domain={[0.5, 10.5]}
+                  ticks={[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}
+                  tick={{ fontSize: 11, fill: isDarkMode ? '#94a3b8' : '#64748b' }}
+                />
+
+                {/* Background Reference Zones */}
+                {/* 1. Upper Zone: Hyperarousal (8-10) */}
+                <ReferenceArea y1={7.5} y2={10.5} fill={isDarkMode ? 'rgba(159,18,57,0.18)' : '#fef2f2'} fillOpacity={0.8} />
+                
+                {/* 2. Middle Zone: Optimal Window (4-7) */}
+                <ReferenceArea y1={3.5} y2={7.5} fill={isDarkMode ? 'rgba(6,78,59,0.18)' : '#f0fdf4'} fillOpacity={0.8} />
+                
+                {/* 3. Lower Zone: Hypoarousal (1-3) */}
+                <ReferenceArea y1={0.5} y2={3.5} fill={isDarkMode ? 'rgba(30,27,75,0.18)' : '#eef2ff'} fillOpacity={0.8} />
+
+                <RechartsTooltip content={<CustomChartTooltip />} />
+
+                {/* Sequential Emotional Line */}
+                <Line
+                  type="monotone"
+                  dataKey="displayChartVal"
+                  stroke="#0f766e"
+                  strokeWidth={3}
+                  connectNulls={connectMissedLines}
+                  dot={renderCustomChartDot}
+                  activeDot={{ r: 8, stroke: '#ffffff', strokeWidth: 2, fill: '#0d9488' }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+
+        </section>
+
+        {}
+        <section className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-7 shadow-sm border border-slate-200 dark:border-slate-800 space-y-6">
+          
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-5">
+            <div>
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-teal-100 dark:bg-teal-950 text-teal-700 dark:text-teal-300">
+                  <PlusCircle className="w-5 h-5" />
+                </div>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                  {lang === 'lt' ? 'Įvesti Tolerancijos Lango Įrašą' : 'Log Daily Emotional State'}
+                </h2>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                {lang === 'lt'
+                  ? 'Įvedus vėlesnį dienos slotą, neįvesti ankstesni slotai bus automatiškai pažymėti MISSED.'
+                  : 'Select date, time slot, and score. Unlogged earlier slots for the date will automatically resolve to MISSED.'}
+              </p>
+            </div>
+          </div>
+
+          <form onSubmit={handleSaveEntry} className="space-y-6">
+
+            {/* DATE & TIME CONTROLS */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              
+              {/* Date Input */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-teal-600" />
+                  <span>{lang === 'lt' ? '1. Pasirinkite Data:' : '1. Select Date:'}</span>
+                </label>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
+                  className="w-full p-2.5 text-sm font-semibold rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              {/* Time Slot Selection */}
+              <div className="space-y-1.5 lg:col-span-2">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>{lang === 'lt' ? '2. Laiko Slotas:' : '2. Select Time Slot:'}</span>
+                </label>
+                
+                <div className="grid grid-cols-3 gap-2">
+                  {SLOT_CONFIGS.map((slot) => {
+                    const Icon = slot.icon;
+                    const isSelected = selectedSlot === slot.id;
+                    const isDetected = detectSlotFromSystemTime() === slot.id && selectedDate === formatDateISO(new Date());
+
+                    return (
+                      <button
+                        key={slot.id}
+                        type="button"
+                        onClick={() => setSelectedSlot(slot.id)}
+                        className={`relative flex items-center justify-center gap-2 p-2.5 rounded-2xl border text-xs font-bold transition-all ${
+                          isSelected
+                            ? 'border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 shadow-xs'
+                            : 'border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        }`}
+                      >
+                        {isDetected && (
+                          <span className="absolute -top-2 right-2 px-1.5 py-0.2 text-[9px] font-black rounded-full bg-emerald-600 text-white shadow-xs">
+                            System
+                          </span>
+                        )}
+                        <Icon className={`w-4 h-4 ${isSelected ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`} />
+                        <span>{lang === 'lt' ? slot.nameLt : slot.nameEn}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+            </div>
+
+            {/* LIKERT RATING SCORE SELECTOR */}
+            <div className="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                    {lang === 'lt' ? '3. Sujaudinimo Lygis (1-10 Likert Skalė):' : '3. Emotional Arousal Rating (1 to 10 Scale):'}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {lang === 'lt' ? 'Mėlyna = Žema energija | Žalia = Optimali | Raudona = Hiper-nerimas' : 'Blue = Hypoarousal | Green = Optimal Tolerance | Red = Hyperarousal'}
+                  </p>
                 </div>
 
-                <button
-                  onClick={() => handleDateChange(1)}
-                  className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition"
-                  title="Next Day"
-                >
-                  <ChevronRight className="w-5 h-5" />
-                </button>
-
-                {selectedDate !== formatDateISO(new Date()) && (
-                  <button
-                    onClick={() => setSelectedDate(formatDateISO(new Date()))}
-                    className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-teal-50 text-teal-700 dark:bg-teal-950/50 dark:text-teal-300 border border-teal-200 dark:border-teal-800 hover:bg-teal-100 transition"
-                  >
-                    {lang === 'lt' ? 'Grįžti į šiandien' : 'Today'}
-                  </button>
+                {activeZone && (
+                  <span className={`px-3 py-1 text-xs font-bold rounded-full border ${activeZone.bgBadge}`}>
+                    {lang === 'lt' ? activeZone.nameLt : activeZone.nameEn}
+                  </span>
                 )}
               </div>
 
-              {/* Time Slots Selection */}
-              <div className="grid grid-cols-3 gap-2">
-                {TIME_SLOTS.map((slot) => {
-                  const Icon = slot.icon;
-                  const isSelected = selectedSlot === slot.id;
-                  const isCurrentSystemSlot = selectedDate === formatDateISO(new Date()) && getCurrentTimeSlotId() === slot.id;
-                  const hasSavedData = !!logs[selectedDate]?.[slot.id];
-                  const slotEntry = logs[selectedDate]?.[slot.id];
-                  const slotZone = slotEntry ? getZoneForLevel(slotEntry.level) : null;
+              {/* 10 Rating Buttons Grid */}
+              <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => {
+                  const numZone = getZoneByScore(num);
+                  const isSelected = selectedScore === num;
+
+                  let btnStyle = numZone.btnDefault;
+                  if (isSelected) {
+                    btnStyle = numZone.btnActive;
+                  }
 
                   return (
                     <button
-                      key={slot.id}
-                      onClick={() => setSelectedSlot(slot.id)}
-                      className={`relative flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all ${
-                        isSelected
-                          ? 'border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/50 dark:bg-emerald-950/20'
-                          : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800'
-                      }`}
+                      key={num}
+                      type="button"
+                      onClick={() => setSelectedScore(num)}
+                      className={`h-12 sm:h-14 rounded-2xl font-extrabold text-base transition-all duration-150 flex flex-col items-center justify-center ${btnStyle}`}
                     >
-                      {/* Active Indicator Badge */}
-                      {isCurrentSystemSlot && (
-                        <span className="absolute -top-2 px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-emerald-600 text-white shadow-xs">
-                          {lang === 'lt' ? 'Dabar' : 'Now'}
-                        </span>
-                      )}
-
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <Icon className={`w-4 h-4 ${isSelected ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'}`} />
-                        <span className={`text-xs font-bold ${isSelected ? 'text-emerald-900 dark:text-emerald-200' : 'text-slate-700 dark:text-slate-300'}`}>
-                          {lang === 'lt' ? slot.labelLt : slot.labelEn}
-                        </span>
-                      </div>
-
-                      <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                        {slot.timeEn}
+                      <span>{num}</span>
+                      <span className="text-[9px] font-medium opacity-75 hidden sm:block">
+                        {num <= 3 ? 'Hypo' : num <= 7 ? 'Optimal' : 'Hyper'}
                       </span>
-
-                      {/* Logged status indicator */}
-                      {hasSavedData ? (
-                        <div className="mt-1.5 flex items-center gap-1">
-                          <span className={`w-2 h-2 rounded-full ${
-                            slotZone?.id === 'hyper' ? 'bg-amber-500' : slotZone?.id === 'optimal' ? 'bg-emerald-500' : 'bg-indigo-500'
-                          }`} />
-                          <span className="text-[10px] font-extrabold text-slate-600 dark:text-slate-300">
-                            Lvl {slotEntry.level}
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="mt-1.5 text-[10px] text-slate-400 italic">
-                          {lang === 'lt' ? 'Tuščia' : 'Empty'}
-                        </span>
-                      )}
                     </button>
                   );
                 })}
               </div>
 
-            </div>
-
-            {/* INTERACTIVE WINDOW OF TOLERANCE LIKERT SCALE */}
-            {}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-800 space-y-6">
-              
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                      {lang === 'lt' ? 'Tolerancijos Lango Skaalė (1 - 10)' : 'Window of Tolerance Scale (1 - 10)'}
-                    </h2>
-                    <span className={`px-2.5 py-0.5 text-xs font-bold rounded-full border ${currentZone.badgeBg}`}>
-                      {lang === 'lt' ? currentZone.nameLt : currentZone.nameEn}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    {lang === 'lt'
-                      ? 'Pasirinkite skaičių nuo 1 iki 10, atitinkantį jūsų emocinį ir kūno sujaudinimo lygį.'
-                      : 'Select a score representing your current nervous system arousal level.'}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-slate-500">
-                    {lang === 'lt' ? 'Šio laiko slotas:' : 'Selected Slot:'}
-                  </span>
-                  <span className="px-3 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wide">
-                    {TIME_SLOTS.find(s => s.id === selectedSlot)?.[lang === 'lt' ? 'labelLt' : 'labelEn']}
-                  </span>
-                </div>
-              </div>
-
-              {/* Likert Scale Buttons 1-10 */}
-              <div>
-                <div className="grid grid-cols-10 gap-1.5 sm:gap-2.5">
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => {
-                    const btnZone = getZoneForLevel(num);
-                    const isSelected = level === num;
-                    
-                    let bgStyle = "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700";
-                    if (isSelected) {
-                      bgStyle = btnZone.activeBtn;
-                    }
-
-                    return (
-                      <button
-                        key={num}
-                        type="button"
-                        onClick={() => setLevel(num)}
-                        className={`h-12 sm:h-14 rounded-xl text-base sm:text-lg font-bold transition-all duration-200 flex flex-col items-center justify-center ${bgStyle}`}
-                      >
-                        <span>{num}</span>
-                        <span className="text-[9px] opacity-75 font-medium hidden sm:block">
-                          {num <= 3 ? 'Hypo' : num <= 7 ? 'Optimal' : 'Hyper'}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Interactive Visual Slider */}
-                <div className="mt-5 space-y-2">
-                  <div className="relative h-3 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-800 flex">
-                    {/* Zone indicators inside bar */}
-                    <div className="w-[30%] bg-indigo-500/70 h-full border-r border-white/20" title="Hypoarousal Zone (1-3)" />
-                    <div className="w-[40%] bg-emerald-500/70 h-full border-r border-white/20" title="Optimal Zone (4-7)" />
-                    <div className="w-[30%] bg-amber-500/70 h-full" title="Hyperarousal Zone (8-10)" />
-                  </div>
-                  
-                  <input
-                    type="range"
-                    min="1"
-                    max="10"
-                    step="1"
-                    value={level}
-                    onChange={(e) => setLevel(Number(e.target.value))}
-                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-600 dark:bg-slate-700"
-                  />
-
-                  {/* Range Labels */}
-                  <div className="flex justify-between text-xs font-semibold text-slate-500 dark:text-slate-400 px-1">
-                    <span className="text-indigo-600 dark:text-indigo-400">1 - 3: Hypoarousal</span>
-                    <span className="text-emerald-600 dark:text-emerald-400">4 - 7: Optimal Window</span>
-                    <span className="text-amber-600 dark:text-amber-400">8 - 10: Hyperarousal</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Dynamic Zone Information Card */}
-              {}
-              <div className={`p-4 sm:p-5 rounded-2xl bg-gradient-to-r ${currentZone.cardBg} border space-y-3 transition-all`}>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    {currentZone.id === 'hyper' && <Zap className="w-5 h-5 text-amber-600" />}
-                    {currentZone.id === 'optimal' && <Shield className="w-5 h-5 text-emerald-600" />}
-                    {currentZone.id === 'hypo' && <Moon className="w-5 h-5 text-indigo-600" />}
-                    <h3 className="font-bold text-slate-900 dark:text-white text-base">
-                      {lang === 'lt' ? currentZone.nameLt : currentZone.nameEn}
-                    </h3>
-                  </div>
-
-                  <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 italic">
-                    {lang === 'lt' ? currentZone.sympatheticLt : currentZone.sympathetic}
-                  </span>
-                </div>
-
-                <p className="text-sm text-slate-700 dark:text-slate-300">
-                  {lang === 'lt' ? currentZone.descLt : currentZone.descEn}
-                </p>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 text-xs">
-                  <div className="bg-white/60 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/50 dark:border-slate-800">
-                    <span className="font-bold text-slate-900 dark:text-slate-100 block mb-1">
-                      {lang === 'lt' ? '🧘‍♂️ Kūno signalai (Somatika):' : '🧘‍♂️ Somatic Signals:'}
-                    </span>
-                    <span className="text-slate-600 dark:text-slate-400">
-                      {lang === 'lt' ? currentZone.somaticLt : currentZone.somaticEn}
-                    </span>
-                  </div>
-
-                  <div className="bg-white/60 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/50 dark:border-slate-800">
-                    <span className="font-bold text-slate-900 dark:text-slate-100 block mb-1">
-                      {lang === 'lt' ? '💡 Reguliavimo rekomendacija:' : '💡 Regulation Coping Suggestion:'}
-                    </span>
-                    <span className="text-slate-600 dark:text-slate-400">
-                      {lang === 'lt' ? currentZone.copingLt : currentZone.copingEn}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-
-            {/* EMOTIONS, SOMATIC TAGS & NOTES FORM */}
-            {}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              
-              {/* Emotions Tag Selector */}
-              <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-slate-800 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                    <Heart className="w-4 h-4 text-rose-500" />
-                    <span>{lang === 'lt' ? 'Emocinė būsena (Žymės)' : 'Emotional Tags'}</span>
-                  </h3>
-                  <span className="text-xs text-slate-400">
-                    {selectedEmotions.length} {lang === 'lt' ? 'pasirinkta' : 'selected'}
-                  </span>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  {EMOTION_TAGS.map((tag) => {
-                    const isSelected = selectedEmotions.includes(tag.id);
-                    return (
-                      <button
-                        key={tag.id}
-                        type="button"
-                        onClick={() => handleToggleEmotion(tag.id)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
-                          isSelected
-                            ? 'bg-emerald-600 text-white shadow-xs'
-                            : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-                        }`}
-                      >
-                        {isSelected && <Check className="w-3 h-3" />}
-                        <span>{lang === 'lt' ? tag.labelLt : tag.labelEn}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Somatic Tag Selector */}
-              <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-slate-800 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                    <Activity className="w-4 h-4 text-teal-500" />
-                    <span>{lang === 'lt' ? 'Kūno pojūčiai (Somatika)' : 'Physical Sensations'}</span>
-                  </h3>
-                  <span className="text-xs text-slate-400">
-                    {selectedSomatics.length} {lang === 'lt' ? 'pasirinkta' : 'selected'}
-                  </span>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  {SOMATIC_TAGS.map((tag) => {
-                    const isSelected = selectedSomatics.includes(tag.id);
-                    return (
-                      <button
-                        key={tag.id}
-                        type="button"
-                        onClick={() => handleToggleSomatic(tag.id)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
-                          isSelected
-                            ? 'bg-teal-600 text-white shadow-xs'
-                            : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-                        }`}
-                      >
-                        {isSelected && <Check className="w-3 h-3" />}
-                        <span>{lang === 'lt' ? tag.labelLt : tag.labelEn}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-            </div>
-
-            {/* NOTES & SAVE ACTION BAR */}
-            {}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-slate-800 space-y-4">
-              <h3 className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                <FileText className="w-4 h-4 text-indigo-500" />
-                <span>{lang === 'lt' ? 'Kontekstas ir Triggeriai (Užrašai)' : 'Notes & Triggers Context'}</span>
-              </h3>
-
-              <textarea
-                rows={3}
-                value={noteText}
-                onChange={(e) => setNoteText(e.target.value)}
-                placeholder={
-                  lang === 'lt'
-                    ? 'Kas lėmė šią būseną? Įvykiai, mintys, aplinka, miego kokybė...'
-                    : 'What contributed to this state? Events, sleep quality, triggers, environment...'
-                }
-                className="w-full p-3 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-
-              <div className="flex items-center justify-between pt-2">
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleSaveEntry}
-                    className="flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-md shadow-emerald-500/20 hover:from-teal-700 hover:to-emerald-700 active:scale-95 transition"
-                  >
-                    <Check className="w-4 h-4" />
-                    <span>{lang === 'lt' ? 'Išsaugoti įrašą' : 'Save Entry'}</span>
-                  </button>
-
-                  {saveSuccess && (
-                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 animate-pulse">
-                      ✓ {lang === 'lt' ? 'Įrašas išsaugotas!' : 'Entry Saved!'}
-                    </span>
-                  )}
-                </div>
-
-                {logs[selectedDate]?.[selectedSlot] && (
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteSlotEntry(selectedSlot)}
-                    className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    <span>{lang === 'lt' ? 'Ištrinti šį įrašą' : 'Delete Slot'}</span>
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* DAILY OVERVIEW CARDS FOR ALL 3 SLOTS */}
-            {}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-slate-800 space-y-4">
-              <h3 className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                <Clock className="w-4 h-4 text-teal-600" />
-                <span>
-                  {lang === 'lt' ? 'Dienos laiko slotų apžvalga' : 'Daily Slot Status Summary'} ({formatDisplayDate(selectedDate, lang)})
-                </span>
-              </h3>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {TIME_SLOTS.map((slot) => {
-                  const entry = logs[selectedDate]?.[slot.id];
-                  const Icon = slot.icon;
-                  const zone = entry ? getZoneForLevel(entry.level) : null;
-
-                  return (
-                    <div
-                      key={slot.id}
-                      onClick={() => setSelectedSlot(slot.id)}
-                      className={`p-4 rounded-xl border cursor-pointer transition ${
-                        selectedSlot === slot.id
-                          ? 'border-emerald-500 bg-emerald-50/30 dark:bg-emerald-950/20'
-                          : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <Icon className="w-4 h-4 text-slate-500" />
-                          <span className="font-bold text-xs uppercase tracking-wide text-slate-800 dark:text-slate-200">
-                            {lang === 'lt' ? slot.labelLt : slot.labelEn}
-                          </span>
-                        </div>
-                        {entry && (
-                          <span className={`px-2 py-0.5 text-[10px] font-bold rounded-md border ${zone?.badgeBg}`}>
-                            Lvl {entry.level}
-                          </span>
-                        )}
-                      </div>
-
-                      {entry ? (
-                        <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-400">
-                          <p className="font-semibold text-slate-800 dark:text-slate-200">
-                            {lang === 'lt' ? zone?.nameLt : zone?.nameEn}
-                          </p>
-                          {entry.emotions?.length > 0 && (
-                            <p className="truncate">
-                              <strong className="text-slate-500">Emotions: </strong>
-                              {entry.emotions.map(e => EMOTION_TAGS.find(t => t.id === e)?.[lang === 'lt' ? 'labelLt' : 'labelEn']).join(', ')}
-                            </p>
-                          )}
-                          {entry.note && (
-                            <p className="italic text-slate-500 line-clamp-2">
-                              "{entry.note}"
-                            </p>
-                          )}
-                        </div>
-                      ) : (
-                        <p className="text-xs text-slate-400 italic py-2">
-                          {lang === 'lt' ? 'Įrašo nėra. Spustelėkite norėdami įvesti.' : 'No entry logged. Click to fill.'}
-                        </p>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-          </div>
-        )}
-
-        {/* TAB 2: VISUAL ANALYTICS & DASHBOARD */}
-        {}
-        {activeTab === 'analytics' && (
-          <div className="space-y-6">
-
-            {/* KEY METRICS SUMMARY ROW */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              
-              <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
-                <div>
-                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                    {lang === 'lt' ? 'Tolerancijos Lange' : 'Optimal Zone Time'}
-                  </span>
-                  <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
-                    {analyticsData.optimalPct}%
-                  </h3>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    {lang === 'lt' ? 'Lygiai 4 - 7' : 'Levels 4 - 7'}
-                  </p>
-                </div>
-                <div className="p-3 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 rounded-2xl">
-                  <Shield className="w-6 h-6" />
-                </div>
-              </div>
-
-              <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
-                <div>
-                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                    {lang === 'lt' ? 'Hiper-sujaudinimas' : 'Hyperarousal'}
-                  </span>
-                  <h3 className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-1">
-                    {analyticsData.hyperPct}%
-                  </h3>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    {lang === 'lt' ? 'Lygiai 8 - 10' : 'Levels 8 - 10'}
-                  </p>
-                </div>
-                <div className="p-3 bg-amber-50 dark:bg-amber-950/50 text-amber-600 rounded-2xl">
-                  <Zap className="w-6 h-6" />
-                </div>
-              </div>
-
-              <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
-                <div>
-                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                    {lang === 'lt' ? 'Hipo-sujaudinimas' : 'Hypoarousal'}
-                  </span>
-                  <h3 className="text-2xl font-black text-indigo-600 dark:text-indigo-400 mt-1">
-                    {analyticsData.hypoPct}%
-                  </h3>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    {lang === 'lt' ? 'Lygiai 1 - 3' : 'Levels 1 - 3'}
-                  </p>
-                </div>
-                <div className="p-3 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 rounded-2xl">
-                  <Moon className="w-6 h-6" />
-                </div>
-              </div>
-
-              <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
-                <div>
-                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                    {lang === 'lt' ? 'Iš viso įrašų' : 'Total Entries Logged'}
-                  </span>
-                  <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-1">
-                    {analyticsData.totalEntries}
-                  </h3>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    {lang === 'lt' ? 'Registruoti laiko slotai' : 'Recorded slots'}
-                  </p>
-                </div>
-                <div className="p-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-2xl">
-                  <TrendingUp className="w-6 h-6" />
-                </div>
-              </div>
-
-            </div>
-
-            {/* 14-DAY TIMELINE MATRIX VISUALIZATION */}
-            {}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-800 space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-4">
-                <div>
-                  <h3 className="font-bold text-slate-900 dark:text-slate-100 text-base">
-                    {lang === 'lt' ? '14 Dienų Būsenos Dinamika' : '14-Day Zone State Matrix'}
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    {lang === 'lt' ? 'Rytinis, dieninis ir vakarinis sujaudinimo lygis laike' : 'Morning, Midday and Evening emotional levels mapped over time'}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-4 text-xs font-medium">
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded-full bg-indigo-500" />
-                    <span>Hypo (1-3)</span>
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded-full bg-emerald-500" />
-                    <span>Optimal (4-7)</span>
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded-full bg-amber-500" />
-                    <span>Hyper (8-10)</span>
-                  </span>
-                </div>
-              </div>
-
-              {analyticsData.timeline.length > 0 ? (
-                <div className="overflow-x-auto pb-2">
-                  <div className="min-w-[600px] space-y-2">
-                    {analyticsData.timeline.map((dayItem) => (
-                      <div
-                        key={dayItem.dateStr}
-                        onClick={() => {
-                          setSelectedDate(dayItem.dateStr);
-                          setActiveTab('log');
-                        }}
-                        className="grid grid-cols-12 items-center p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
-                      >
-                        <div className="col-span-3 text-xs font-semibold text-slate-700 dark:text-slate-300">
-                          {dayItem.displayDate}
-                        </div>
-
-                        <div className="col-span-9 grid grid-cols-3 gap-2">
-                          {['morning', 'midday', 'evening'].map((slotId) => {
-                            const entry = dayItem[slotId];
-                            const zone = entry ? getZoneForLevel(entry.level) : null;
-                            const slotName = TIME_SLOTS.find(s => s.id === slotId)?.[lang === 'lt' ? 'labelLt' : 'labelEn'];
-
-                            return (
-                              <div
-                                key={slotId}
-                                className={`h-9 rounded-lg flex items-center justify-between px-3 text-xs font-bold border transition ${
-                                  entry
-                                    ? zone?.badgeBg
-                                    : 'bg-slate-100 dark:bg-slate-800 border-dashed border-slate-300 dark:border-slate-700 text-slate-400'
-                                }`}
-                              >
-                                <span className="opacity-80 text-[10px] uppercase font-semibold">{slotName}</span>
-                                {entry ? (
-                                  <span>Lvl {entry.level}</span>
-                                ) : (
-                                  <span className="font-normal text-[10px] italic">-</span>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <p className="text-center text-xs text-slate-400 py-8">
-                  {lang === 'lt' ? 'Nėra pakankamai įrašų statistikai rodyta.' : 'No history available to render timeline matrix.'}
-                </p>
-              )}
-            </div>
-
-            {/* FREQUENT EMOTIONS & DATA IMPORT/EXPORT TOOLS */}
-            {}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              
-              {/* Emotion Frequency Distribution */}
-              <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-slate-800 space-y-4">
-                <h3 className="font-bold text-slate-900 dark:text-slate-100 text-base flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-emerald-500" />
-                  <span>{lang === 'lt' ? 'Dažniausios Emocinės Būsenos' : 'Most Frequent Emotions'}</span>
-                </h3>
-
-                <div className="space-y-2">
-                  {Object.entries(analyticsData.emotionFreq).length > 0 ? (
-                    Object.entries(analyticsData.emotionFreq)
-                      .sort((a, b) => b[1] - a[1])
-                      .slice(0, 6)
-                      .map(([tagId, count]) => {
-                        const tag = EMOTION_TAGS.find(t => t.id === tagId);
-                        if (!tag) return null;
-                        const pct = Math.round((count / analyticsData.totalEntries) * 100) || 0;
-
-                        return (
-                          <div key={tagId} className="space-y-1">
-                            <div className="flex justify-between text-xs font-semibold">
-                              <span className="text-slate-800 dark:text-slate-200">
-                                {lang === 'lt' ? tag.labelLt : tag.labelEn}
-                              </span>
-                              <span className="text-slate-500">{count}x ({pct}%)</span>
-                            </div>
-                            <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-gradient-to-r from-teal-500 to-emerald-500 rounded-full"
-                                style={{ width: `${Math.min(pct * 2, 100)}%` }}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })
-                  ) : (
-                    <p className="text-xs text-slate-400 italic py-4">
-                      {lang === 'lt' ? 'Užregistruokite emocijų žymes logineryje.' : 'Log entries with emotion tags to view frequency distribution.'}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* LocalStorage Data Tools */}
-              <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-slate-800 space-y-4 flex flex-col justify-between">
-                <div>
-                  <h3 className="font-bold text-slate-900 dark:text-slate-100 text-base flex items-center gap-2">
-                    <Sliders className="w-4 h-4 text-indigo-500" />
-                    <span>{lang === 'lt' ? 'Duomenų Valdymas ir Atsarginė Kopija' : 'Data Management & Privacy'}</span>
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-1">
-                    {lang === 'lt'
-                      ? 'Visi duomenys saugomi naršyklės LocalStorage privačiai. Galite eksportuoti arba įkelti JSON atsarginę kopiją.'
-                      : 'All logs are saved client-side in LocalStorage. Export or import JSON backups for complete privacy.'}
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 pt-4">
-                  <button
-                    onClick={handleExportJSON}
-                    className="flex items-center justify-center gap-1.5 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 transition"
-                  >
-                    <Download className="w-4 h-4 text-teal-600" />
-                    <span>{lang === 'lt' ? 'Eksportuoti JSON' : 'Export Backup'}</span>
-                  </button>
-
-                  <label className="flex items-center justify-center gap-1.5 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer transition">
-                    <Upload className="w-4 h-4 text-indigo-600" />
-                    <span>{lang === 'lt' ? 'Importuoti JSON' : 'Import JSON'}</span>
-                    <input type="file" accept=".json" onChange={handleImportJSON} className="hidden" />
+              {/* Context Notes & Time Input Row */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+                
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>{lang === 'lt' ? 'Užregistruotas Laikas:' : 'Exact Log Time:'}</span>
                   </label>
+                  <input
+                    type="time"
+                    value={inputTime}
+                    onChange={(e) => setInputTime(e.target.value)}
+                    className="w-full p-2.5 text-sm font-semibold rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
                 </div>
 
-                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
-                  <button
-                    onClick={handleClearData}
-                    className="text-xs font-bold text-red-600 hover:underline flex items-center gap-1"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>{lang === 'lt' ? 'Išvalyti visus duomenis' : 'Clear All History'}</span>
-                  </button>
-                  <span className="text-[10px] text-slate-400">Storage key: wot_daily_logs_v1</span>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-teal-600" />
+                    <span>{lang === 'lt' ? 'Pastabos / Kontekstas (neprivaloma):' : 'Contextual Notes & Somatic Triggers (Optional):'}</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={inputNotes}
+                    onChange={(e) => setInputNotes(e.target.value)}
+                    placeholder={lang === 'lt' ? 'Pvz., Stresas darbe, ramus pasivaikščiojimas...' : 'e.g., Felt nervous before meeting, deep breathing helped...'}
+                    className="w-full p-2.5 text-sm rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
                 </div>
+
               </div>
+
+              {/* Somatic Feedback Box */}
+              {activeZone && (
+                <div className={`p-4 rounded-2xl border space-y-2 transition-all ${activeZone.cardBg}`}>
+                  <div className="flex items-center gap-2">
+                    {activeZone.id === 'hypo' && <Moon className="w-5 h-5 text-indigo-600" />}
+                    {activeZone.id === 'optimal' && <Shield className="w-5 h-5 text-emerald-600" />}
+                    {activeZone.id === 'hyper' && <Zap className="w-5 h-5 text-rose-600" />}
+                    <span className="font-bold text-sm text-slate-900 dark:text-slate-100">
+                      {lang === 'lt' ? activeZone.subtitleLt : activeZone.subtitleEn}
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                    {lang === 'lt' ? activeZone.descLt : activeZone.descEn}
+                  </p>
+
+                  <div className="pt-1 text-xs border-t border-slate-200/50 dark:border-slate-800/50">
+                    <strong className="text-slate-900 dark:text-slate-100">
+                      💡 {lang === 'lt' ? 'Kūno reguliavimo patarimas: ' : 'Somatic Regulation Advice: '}
+                    </strong>
+                    <span className="text-slate-600 dark:text-slate-400">
+                      {lang === 'lt' ? activeZone.physioLt : activeZone.physioEn}
+                    </span>
+                  </div>
+                </div>
+              )}
 
             </div>
 
-          </div>
-        )}
+            {/* Save Button */}
+            <div className="pt-2 flex justify-end">
+              <button
+                type="submit"
+                className="flex items-center gap-2 px-7 py-3 rounded-2xl font-extrabold text-sm bg-gradient-to-r from-teal-600 via-emerald-600 to-indigo-600 hover:from-teal-700 hover:to-indigo-700 text-white shadow-md shadow-emerald-500/20 active:scale-95 transition"
+              >
+                <Check className="w-4 h-4" />
+                <span>{lang === 'lt' ? 'Išsaugoti dienos įrašą' : 'Save Slot Entry'}</span>
+              </button>
+            </div>
 
-        {/* TAB 3: INTERACTIVE GROUNDING TOOLS & BREATH PACER */}
-        {}
-        {activeTab === 'grounding' && (
-          <GroundingToolSection lang={lang} />
-        )}
+          </form>
 
-        {/* TAB 4: PSYCHOLOGICAL FRAMEWORK GUIDE */}
+        </section>
+
         {}
-        {activeTab === 'guide' && (
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-800 space-y-6">
-            
-            <div className="border-b border-slate-100 dark:border-slate-800 pb-4">
-              <h2 className="text-xl font-extrabold text-slate-900 dark:text-slate-100">
-                {lang === 'lt' ? 'Kas yra Tolerancijos Lango Metodas?' : 'What is the Window of Tolerance Framework?'}
-              </h2>
-              <p className="text-sm text-slate-500 mt-1">
-                {lang === 'lt'
-                  ? 'Konsepsiją sukūrė dr. Dan Siegel (paskelbta Polyvagal teorijos kontekste).'
-                  : 'Developed by Dr. Dan Siegel to describe normal neurological arousal boundaries.'}
+        <section className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-7 shadow-sm border border-slate-200 dark:border-slate-800 space-y-6">
+          
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-5">
+            <div>
+              <div className="flex items-center gap-2">
+                <FileSpreadsheet className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                  {lang === 'lt' ? '7-Stulpelių Istorijos Registras' : '7-Column Flat Daily History'}
+                </h2>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                [ Date | Morning Score & Time | Midday Score & Time | Evening Score & Time ]
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              
-              <div className="p-5 rounded-2xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 space-y-2">
-                <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 font-bold">
-                  <Zap className="w-5 h-5" />
-                  <h3>1. Hyperarousal (8 - 10)</h3>
-                </div>
-                <p className="text-xs text-amber-900 dark:text-amber-200 leading-relaxed">
-                  {lang === 'lt'
-                    ? 'Simpatinė nervų sistema per daug suaktyvinta. Būdinga kova arba bėgimas (fight/flight). Pasireiškia nerimu, pykčiu, skriejančiomis mintimis ir panika.'
-                    : 'The sympathetic nervous system is overly active (Fight/Flight). Characterized by anxiety, anger, hyper-vigilance, and overwhelm.'}
-                </p>
-              </div>
+            {/* Action Toolbar */}
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={handleDownloadXLSX}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition"
+                title="Download Excel file directly to your device"
+              >
+                <Download className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Download .xlsx</span>
+              </button>
 
-              <div className="p-5 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 space-y-2">
-                <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-bold">
-                  <Shield className="w-5 h-5" />
-                  <h3>2. Optimal Zone (4 - 7)</h3>
-                </div>
-                <p className="text-xs text-emerald-900 dark:text-emerald-200 leading-relaxed">
-                  {lang === 'lt'
-                    ? 'Ventralinė klajoklio nervo šaka veikia optimaliai. Jautiesi saugus, ramus, gebantis mąstyti ir lanksčiai reaguoti į streso veiksnius.'
-                    : 'Ventral vagal system is active. You feel safe, calm, emotionally regulated, and resilient to daily life stressors.'}
-                </p>
-              </div>
+              <button
+                onClick={handlePushToGitHub}
+                disabled={isSyncing}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/50 dark:hover:bg-indigo-900/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition"
+              >
+                <Upload className="w-3.5 h-3.5 text-indigo-600" />
+                <span>{isSyncing ? 'Syncing...' : 'Sync to GitHub'}</span>
+              </button>
 
-              <div className="p-5 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/50 space-y-2">
-                <div className="flex items-center gap-2 text-indigo-700 dark:text-indigo-400 font-bold">
-                  <Moon className="w-5 h-5" />
-                  <h3>3. Hypoarousal (1 - 3)</h3>
-                </div>
-                <p className="text-xs text-indigo-900 dark:text-indigo-200 leading-relaxed">
-                  {lang === 'lt'
-                    ? 'Dorsalinė klajoklio nervo šaka suaktyvina sustingimą (freeze/collapse). Pasireiškia emociniu nutirpimu, smegenų rūku, išsekimu ir atsiribojimu.'
-                    : 'Dorsal vagal shutdown (Freeze/Collapse). Characterized by emotional numbness, fatigue, dissociation, and low energy.'}
-                </p>
-              </div>
+              <button
+                onClick={handlePullFromGitHub}
+                disabled={isSyncing}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${isSyncing ? 'animate-spin' : ''}`} />
+                <span>Pull GitHub</span>
+              </button>
 
+              <button
+                onClick={() => setRecords(generateDemoData())}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:hover:bg-amber-900/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800 transition"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                <span>Seed 14 Days</span>
+              </button>
             </div>
-
-            {/* Somatic & Regulation Strategies Guidance */}
-            <div className="bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
-              <h3 className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 text-sm">
-                <Sparkles className="w-4 h-4 text-emerald-500" />
-                <span>
-                  {lang === 'lt' ? 'Kaip naudotis dienoraščiu kasdieninėje praktikoje?' : 'How to integrate this framework into daily routine?'}
-                </span>
-              </h3>
-              <ul className="text-xs text-slate-600 dark:text-slate-300 space-y-2 list-disc pl-5 leading-relaxed">
-                <li>
-                  <strong>{lang === 'lt' ? 'Žymėkite 3 kartus per dieną:' : 'Log 3 times daily:'}</strong> {lang === 'lt' ? 'Rytą, dieną ir vakarą, kad pastebėtumėte savo nervų sistemos svyravimus.' : 'Morning, Midday, and Evening to notice natural autonomic rhythms.'}
-                </li>
-                <li>
-                  <strong>{lang === 'lt' ? 'Jei esate Hiper zonoje:' : 'When in Hyperarousal:'}</strong> {lang === 'lt' ? 'Naudokite ilgesnį iškvėpimą (pvz. 4-7-8 kvėpavimą) ir šaltą vandenį ant veido.' : 'Use prolonged exhales (4-7-8 pattern) and somatic pressure.'}
-                </li>
-                <li>
-                  <strong>{lang === 'lt' ? 'Jei esate Hipo zonoje:' : 'When in Hypoarousal:'}</strong> {lang === 'lt' ? 'Švelniai judinkite kūną, apsižvalgykite aplinkui, atlikite 5-4-3-2-1 juslių pratimą.' : 'Engage sensory inputs, stretch gently, and use energizing breaths.'}
-                </li>
-              </ul>
-            </div>
-
           </div>
-        )}
+
+          {/* Search & Zone Filters */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50 dark:bg-slate-800/40 p-3 rounded-2xl border border-slate-200 dark:border-slate-800">
+            <div className="relative w-full sm:w-64">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={lang === 'lt' ? 'Ieškoti pagal datą...' : 'Filter by date (YYYY-MM)...'}
+                className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Filter className="w-3.5 h-3.5 text-slate-500" />
+              <span className="text-xs font-bold text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                {lang === 'lt' ? 'Filtras:' : 'Filter:'}
+              </span>
+              <select
+                value={zoneFilter}
+                onChange={(e) => setZoneFilter(e.target.value)}
+                className="p-1.5 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="all">All Entries</option>
+                <option value="missed">Has MISSED slots</option>
+                <option value="hypo">Has Hypoarousal (1-3)</option>
+                <option value="optimal">Has Optimal (4-7)</option>
+                <option value="hyper">Has Hyperarousal (8-10)</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Table Container */}
+          <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+            <table className="w-full text-left border-collapse min-w-[760px]">
+              <thead>
+                <tr className="bg-slate-100/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 text-xs font-extrabold uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
+                  <th className="py-3.5 px-4 border-r border-slate-200 dark:border-slate-800">
+                    Date
+                  </th>
+                  <th className="py-3.5 px-3 text-center border-r border-slate-200 dark:border-slate-800 bg-amber-50/30 dark:bg-amber-950/10">
+                    Morning
+                  </th>
+                  <th className="py-3.5 px-3 text-center border-r border-slate-200 dark:border-slate-800 bg-amber-50/30 dark:bg-amber-950/10">
+                    Morn Time
+                  </th>
+                  <th className="py-3.5 px-3 text-center border-r border-slate-200 dark:border-slate-800 bg-emerald-50/30 dark:bg-emerald-950/10">
+                    Midday
+                  </th>
+                  <th className="py-3.5 px-3 text-center border-r border-slate-200 dark:border-slate-800 bg-emerald-50/30 dark:bg-emerald-950/10">
+                    Mid Time
+                  </th>
+                  <th className="py-3.5 px-3 text-center border-r border-slate-200 dark:border-slate-800 bg-indigo-50/30 dark:bg-indigo-950/10">
+                    Evening
+                  </th>
+                  <th className="py-3.5 px-3 text-center border-r border-slate-200 dark:border-slate-800 bg-indigo-50/30 dark:bg-indigo-950/10">
+                    Eve Time
+                  </th>
+                  <th className="py-3.5 px-3 text-center">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-800 text-xs">
+                {filteredRecords.length > 0 ? (
+                  filteredRecords.map((record) => {
+                    
+                    const renderCell = (scoreVal, timeVal) => {
+                      const isMissed = scoreVal === 'MISSED' || scoreVal === null || scoreVal === undefined;
+
+                      if (isMissed) {
+                        return {
+                          score: (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200/50 dark:border-rose-900/40">
+                              MISSED
+                            </span>
+                          ),
+                          time: <span className="text-[10px] text-rose-400 italic">MISSED</span>
+                        };
+                      }
+
+                      const zone = getZoneByScore(scoreVal);
+                      return {
+                        score: (
+                          <span className={`inline-flex items-center justify-center w-7 h-7 rounded-lg font-black text-xs border ${zone?.bgBadge}`}>
+                            {scoreVal}
+                          </span>
+                        ),
+                        time: <span className="font-semibold text-slate-700 dark:text-slate-300">{timeVal || '-'}</span>
+                      };
+                    };
+
+                    const morn = renderCell(record.morningScore, record.morningTime);
+                    const mid = renderCell(record.middayScore, record.middayTime);
+                    const eve = renderCell(record.eveningScore, record.eveningTime);
+
+                    return (
+                      <tr key={record.date} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition">
+                        
+                        <td className="py-3 px-4 font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap border-r border-slate-200 dark:border-slate-800">
+                          <div className="flex items-center gap-1.5">
+                            <span>{record.date}</span>
+                            <span className="text-[10px] text-slate-400 font-normal">
+                              ({formatDisplayDate(record.date, lang)})
+                            </span>
+                          </div>
+                        </td>
+
+                        <td className="py-3 px-3 text-center border-r border-slate-200 dark:border-slate-800">{morn.score}</td>
+                        <td className="py-3 px-3 text-center border-r border-slate-200 dark:border-slate-800">{morn.time}</td>
+                        
+                        <td className="py-3 px-3 text-center border-r border-slate-200 dark:border-slate-800">{mid.score}</td>
+                        <td className="py-3 px-3 text-center border-r border-slate-200 dark:border-slate-800">{mid.time}</td>
+
+                        <td className="py-3 px-3 text-center border-r border-slate-200 dark:border-slate-800">{eve.score}</td>
+                        <td className="py-3 px-3 text-center border-r border-slate-200 dark:border-slate-800">{eve.time}</td>
+
+                        <td className="py-3 px-3 text-center whitespace-nowrap">
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              onClick={() => setEditRowData({ ...record })}
+                              className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition"
+                              title="Edit Day Record"
+                            >
+                              <Edit3 className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setConfirmModal({
+                                  isOpen: true,
+                                  title: `Delete record for ${record.date}?`,
+                                  message: 'This will purge this entry from history.',
+                                  action: () => {
+                                    setRecords(prev => prev.filter(r => r.date !== record.date));
+                                    setConfirmModal({ isOpen: false, title: '', message: '', action: null });
+                                    showToast('Record deleted');
+                                  }
+                                });
+                              }}
+                              className="p-1.5 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-950/60 text-rose-600 transition"
+                              title="Delete Row"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={8} className="py-8 text-center text-slate-400 italic">
+                      No records found matching filter criteria.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+        </section>
 
       </main>
 
-    </div>
-  );
-}
-
-function GroundingToolSection({ lang }) {
-  const [selectedExercise, setSelectedExercise] = useState('box'); // 'box' | '478' | 'energize'
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [phase, setPhase] = useState('Inhale'); // Inhale, Hold, Exhale
-  const [timerCount, setTimerCount] = useState(4);
-  const [cycleCount, setCycleCount] = useState(0);
-
-  const timerRef = useRef(null);
-
-  const exercises = {
-    box: {
-      nameEn: 'Box Breathing (4-4-4-4)',
-      nameLt: 'Kvadratinis Kvėpavimas (4-4-4-4)',
-      descEn: 'Balances the nervous system and restores focus.',
-      descLt: 'Užtikrina nervų sistemos pusiausvyrą ir grąžina dėmesį.',
-      phases: [
-        { nameEn: 'Inhale', nameLt: 'Įkvėpkite', duration: 4 },
-        { nameEn: 'Hold', nameLt: 'Sulaikykite', duration: 4 },
-        { nameEn: 'Exhale', nameLt: 'Iškvėpkite', duration: 4 },
-        { nameEn: 'Hold', nameLt: 'Sulaikykite', duration: 4 }
-      ]
-    },
-    '478': {
-      nameEn: '4-7-8 Relaxing Breath',
-      nameLt: '4-7-8 Raminantis Kvėpavimas',
-      descEn: 'Rapidly reduces high anxiety and hyperarousal.',
-      descLt: 'Greitai mažina nerimą ir perteklinį sujaudinimą.',
-      phases: [
-        { nameEn: 'Inhale', nameLt: 'Įkvėpkite', duration: 4 },
-        { nameEn: 'Hold', nameLt: 'Sulaikykite', duration: 7 },
-        { nameEn: 'Exhale', nameLt: 'Lėtai iškvėpkite', duration: 8 }
-      ]
-    },
-    energize: {
-      nameEn: 'Energizing Awakening Breath (4-2-4)',
-      nameLt: 'Žadinantis Kvėpavimas Hipo Zonoje (4-2-4)',
-      descEn: 'Helps lift brain fog and gently awaken from freeze.',
-      descLt: 'Padeda išsklaidyti smegenų rūką ir pažadinti kūną.',
-      phases: [
-        { nameEn: 'Inhale Deeply', nameLt: 'Giliai įkvėpkite', duration: 4 },
-        { nameEn: 'Pause', nameLt: 'Pauzė', duration: 2 },
-        { nameEn: 'Exhale Rapidly', nameLt: 'Energingai iškvėpkite', duration: 4 }
-      ]
-    }
-  };
-
-  const activeEx = exercises[selectedExercise];
-
-  useEffect(() => {
-    if (!isPlaying) {
-      if (timerRef.current) clearInterval(timerRef.current);
-      return;
-    }
-
-    let phaseIdx = 0;
-    let currentPhase = activeEx.phases[0];
-    setPhase(lang === 'lt' ? currentPhase.nameLt : currentPhase.nameEn);
-    setTimerCount(currentPhase.duration);
-
-    timerRef.current = setInterval(() => {
-      setTimerCount((prev) => {
-        if (prev > 1) return prev - 1;
-
-        // Transition to next phase
-        phaseIdx = (phaseIdx + 1) % activeEx.phases.length;
-        if (phaseIdx === 0) {
-          setCycleCount(c => c + 1);
-        }
-        const nextPhase = activeEx.phases[phaseIdx];
-        setPhase(lang === 'lt' ? nextPhase.nameLt : nextPhase.nameEn);
-        return nextPhase.duration;
-      });
-    }, 1000);
-
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [isPlaying, selectedExercise, lang]);
-
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      
-      {/* BREATH PACER CARD */}
-      <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-800 space-y-6 text-center">
-        
-        <div className="max-w-md mx-auto space-y-2">
-          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center justify-center gap-2">
-            <Wind className="w-5 h-5 text-teal-500" />
-            <span>{activeEx[lang === 'lt' ? 'nameLt' : 'nameEn']}</span>
-          </h2>
-          <p className="text-xs text-slate-500">{activeEx[lang === 'lt' ? 'descLt' : 'descEn']}</p>
-        </div>
-
-        {/* Exercise Selector Buttons */}
-        <div className="flex flex-wrap justify-center gap-2">
-          {Object.keys(exercises).map((key) => (
-            <button
-              key={key}
-              onClick={() => {
-                setIsPlaying(false);
-                setSelectedExercise(key);
-                setCycleCount(0);
-              }}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${
-                selectedExercise === key
-                  ? 'bg-teal-600 text-white shadow-md'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
-              }`}
-            >
-              {exercises[key][lang === 'lt' ? 'nameLt' : 'nameEn']}
-            </button>
-          ))}
-        </div>
-
-        {/* Visual Animated Breathing Circle */}
-        {}
-        <div className="py-8 flex flex-col items-center justify-center relative">
-          <div
-            className={`w-48 h-48 sm:w-56 sm:h-56 rounded-full flex flex-col items-center justify-center border-4 border-teal-400/30 transition-all duration-1000 ${
-              isPlaying
-                ? phase.includes('Inhale') || phase.includes('Įkvėpkite')
-                  ? 'scale-110 bg-teal-500/20 border-teal-500 shadow-2xl shadow-teal-500/30'
-                  : phase.includes('Exhale') || phase.includes('iškvėpkite')
-                  ? 'scale-90 bg-indigo-500/10 border-indigo-400'
-                  : 'scale-100 bg-emerald-500/15 border-emerald-500'
-                : 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700'
-            }`}
-          >
-            <span className="text-sm font-bold uppercase tracking-wider text-teal-700 dark:text-teal-300">
-              {isPlaying ? phase : (lang === 'lt' ? 'Pasiruošę?' : 'Ready?')}
-            </span>
-
-            <span className="text-4xl sm:text-5xl font-black my-1 text-slate-900 dark:text-white">
-              {isPlaying ? timerCount : '4'}
-            </span>
-
-            <span className="text-[11px] font-semibold text-slate-400">
-              {lang === 'lt' ? `Ciklai: ${cycleCount}` : `Cycles completed: ${cycleCount}`}
-            </span>
-          </div>
-        </div>
-
-        {/* Play/Pause Button */}
-        <div className="flex justify-center gap-3">
-          <button
-            onClick={() => setIsPlaying(!isPlaying)}
-            className="flex items-center gap-2 px-8 py-3 rounded-2xl font-bold text-sm bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-lg shadow-emerald-500/25 hover:scale-105 active:scale-95 transition"
-          >
-            {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 fill-current" />}
-            <span>{isPlaying ? (lang === 'lt' ? 'Sustabdyti' : 'Pause') : (lang === 'lt' ? 'Pradėti kvėpavimą' : 'Start Pacer')}</span>
-          </button>
-        </div>
-
-      </div>
-
-      {/* 5-4-3-2-1 SOMATIC GROUNDING CHECKLIST */}
       {}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-800 space-y-4">
-        <h3 className="font-bold text-slate-900 dark:text-slate-100 text-base flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-emerald-500" />
-          <span>{lang === 'lt' ? '5-4-3-2-1 Juslių Įsižeminimas' : '5-4-3-2-1 Sensory Grounding'}</span>
-        </h3>
+      {isGhModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-slate-200 dark:border-slate-800 space-y-5">
+            
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <Github className="w-5 h-5 text-indigo-600" />
+                <h3 className="font-extrabold text-slate-900 dark:text-slate-100 text-base">
+                  GitHub REST API Sync Settings
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsGhModalOpen(false)}
+                className="p-1 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
-        <p className="text-xs text-slate-500">
-          {lang === 'lt'
-            ? 'Atlikite šį pratimą, kai jaučiate disociaciją, perdegimą ar didelį nerimą.'
-            : 'Focus on your environment to bring your nervous system back to the present moment.'}
-        </p>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Configure your Personal Access Token (PAT) and repository to automatically read and save Excel (<code className="text-emerald-600">.xlsx</code>) logbooks directly to your GitHub repository.
+            </p>
 
-        <div className="space-y-3 text-xs">
-          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-            <strong className="text-emerald-600 dark:text-emerald-400 block mb-0.5">👀 5 {lang === 'lt' ? 'dalykai, kuriuos MATOTE:' : 'things you SEE:'}</strong>
-            <span className="text-slate-600 dark:text-slate-400">{lang === 'lt' ? 'Pastebėkite spalvas, šviesą, daiktus patalpoje.' : 'Look around for small details or objects.'}</span>
-          </div>
+            <div className="space-y-3 text-xs">
+              
+              <div>
+                <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                  Personal Access Token (PAT):
+                </label>
+                <div className="relative">
+                  <Key className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
+                  <input
+                    type="password"
+                    value={ghConfig.token}
+                    onChange={(e) => setGhConfig({ ...ghConfig, token: e.target.value })}
+                    placeholder="ghp_xxxxxxxxxxxx"
+                    className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono text-xs"
+                  />
+                </div>
+              </div>
 
-          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-            <strong className="text-teal-600 dark:text-teal-400 block mb-0.5">✋ 4 {lang === 'lt' ? 'dalykai, kuriuos JAUČIATE:' : 'things you CAN TOUCH:'}</strong>
-            <span className="text-slate-600 dark:text-slate-400">{lang === 'lt' ? 'Pėdos ant grindų, drabužių audinys, kėdės atrama.' : 'Feet on the floor, texture of your desk.'}</span>
-          </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                    Repo Owner / Username:
+                  </label>
+                  <input
+                    type="text"
+                    value={ghConfig.owner}
+                    onChange={(e) => setGhConfig({ ...ghConfig, owner: e.target.value })}
+                    placeholder="octocat"
+                    className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs"
+                  />
+                </div>
 
-          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-            <strong className="text-indigo-600 dark:text-indigo-400 block mb-0.5">👂 3 {lang === 'lt' ? 'garsai, kuriuos GIRDIRTE:' : 'things you HEAR:'}</strong>
-            <span className="text-slate-600 dark:text-slate-400">{lang === 'lt' ? 'Kompiuterio ūžesys, paukščiai lauke, kvėpavimas.' : 'Background hum, birds, distant footsteps.'}</span>
-          </div>
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                    Repository Name:
+                  </label>
+                  <input
+                    type="text"
+                    value={ghConfig.repo}
+                    onChange={(e) => setGhConfig({ ...ghConfig, repo: e.target.value })}
+                    placeholder="my-tolerance-logs"
+                    className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs"
+                  />
+                </div>
+              </div>
 
-          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-            <strong className="text-amber-600 dark:text-amber-400 block mb-0.5">👃 2 {lang === 'lt' ? 'kvapai, kuriuos UŽUODŽIATE:' : 'things you SMELL:'}</strong>
-            <span className="text-slate-600 dark:text-slate-400">{lang === 'lt' ? 'Kava, šviežias oras, kvepalai.' : 'Coffee, fresh air, wood.'}</span>
-          </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                    File Path in Repo:
+                  </label>
+                  <input
+                    type="text"
+                    value={ghConfig.path}
+                    onChange={(e) => setGhConfig({ ...ghConfig, path: e.target.value })}
+                    placeholder="data/tolerance_window_logs.xlsx"
+                    className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs"
+                  />
+                </div>
 
-          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-            <strong className="text-rose-600 dark:text-rose-400 block mb-0.5">👅 1 {lang === 'lt' ? 'skonis, kurį JAUČIATE:' : 'thing you TASTE:'}</strong>
-            <span className="text-slate-600 dark:text-slate-400">{lang === 'lt' ? 'Arbatos gurkšnis arba burnos gaiva.' : 'Water, mint, or residual flavor.'}</span>
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                    Branch:
+                  </label>
+                  <input
+                    type="text"
+                    value={ghConfig.branch}
+                    onChange={(e) => setGhConfig({ ...ghConfig, branch: e.target.value })}
+                    placeholder="main"
+                    className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs"
+                  />
+                </div>
+              </div>
+
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                onClick={() => setIsGhModalOpen(false)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => {
+                  setIsGhModalOpen(false);
+                  showToast('GitHub configuration saved locally');
+                }}
+                className="px-5 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 shadow-md"
+              >
+                Save Settings
+              </button>
+            </div>
+
           </div>
         </div>
+      )}
 
-      </div>
+      {}
+      {editRowData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 max-h-[90vh] overflow-y-auto">
+            
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h3 className="font-extrabold text-slate-900 dark:text-slate-100 text-base flex items-center gap-2">
+                <Edit3 className="w-4 h-4 text-indigo-600" />
+                <span>Edit Entry ({editRowData.date})</span>
+              </h3>
+              <button onClick={() => setEditRowData(null)} className="p-1 text-slate-400">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {SLOT_CONFIGS.map(slot => {
+              const scoreKey = `${slot.id}Score`;
+              const timeKey = `${slot.id}Time`;
+              const notesKey = `${slot.id}Notes`;
+
+              return (
+                <div key={slot.id} className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-2 text-xs">
+                  <span className="font-extrabold text-slate-800 dark:text-slate-200 block">
+                    {slot.nameEn} Slot
+                  </span>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500">Score (1-10 or MISSED):</label>
+                      <input
+                        type="text"
+                        value={editRowData[scoreKey] ?? 'MISSED'}
+                        onChange={(e) => {
+                          const val = e.target.value.trim();
+                          const num = Number(val);
+                          setEditRowData({
+                            ...editRowData,
+                            [scoreKey]: isNaN(num) || val === '' ? 'MISSED' : num
+                          });
+                        }}
+                        className="w-full p-1.5 rounded-xl border text-xs bg-white dark:bg-slate-900"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500">Time (HH:MM or MISSED):</label>
+                      <input
+                        type="text"
+                        value={editRowData[timeKey] ?? 'MISSED'}
+                        onChange={(e) => setEditRowData({ ...editRowData, [timeKey]: e.target.value })}
+                        className="w-full p-1.5 rounded-xl border text-xs bg-white dark:bg-slate-900"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500">Context Notes:</label>
+                    <input
+                      type="text"
+                      value={editRowData[notesKey] ?? ''}
+                      onChange={(e) => setEditRowData({ ...editRowData, [notesKey]: e.target.value })}
+                      className="w-full p-1.5 rounded-xl border text-xs bg-white dark:bg-slate-900"
+                    />
+                  </div>
+                </div>
+              );
+            })}
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                onClick={() => setEditRowData(null)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setRecords(prev => {
+                    const idx = prev.findIndex(r => r.date === editRowData.date);
+                    if (idx >= 0) {
+                      const updated = [...prev];
+                      updated[idx] = { ...editRowData, updatedAt: new Date().toISOString() };
+                      return updated;
+                    }
+                    return prev;
+                  });
+                  setEditRowData(null);
+                  showToast('Record updated successfully');
+                }}
+                className="px-5 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white shadow-md"
+              >
+                Save Changes
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {confirmModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-2xl bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <h3 className="font-extrabold text-slate-900 dark:text-slate-100 text-base">
+                {confirmModal.title}
+              </h3>
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              {confirmModal.message}
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                onClick={() => setConfirmModal({ isOpen: false, title: '', message: '', action: null })}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => confirmModal.action && confirmModal.action()}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 text-white hover:bg-rose-700 shadow-md"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
