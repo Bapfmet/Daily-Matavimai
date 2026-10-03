@@ -214,7 +214,6 @@ function generateDemoData() {
   const records = [];
   const today = new Date();
 
-  // Create 14 realistic historical days
   for (let i = 0; i < 14; i++) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
@@ -225,7 +224,6 @@ function generateDemoData() {
     let eveningScore, eveningTime, eveningNotes;
 
     if (i === 0) {
-      // Today: Morning and Midday logged, Evening pending/missed
       morningScore = 6;
       morningTime = '08:15';
       morningNotes = 'Slept well, felt calm';
@@ -236,7 +234,6 @@ function generateDemoData() {
       eveningTime = 'MISSED';
       eveningNotes = '';
     } else if (i === 1) {
-      // Yesterday: Morning missed, Midday & Evening logged
       morningScore = 'MISSED';
       morningTime = 'MISSED';
       morningNotes = '';
@@ -247,7 +244,6 @@ function generateDemoData() {
       eveningTime = '20:45';
       eveningNotes = 'Relaxing reading session';
     } else if (i === 2) {
-      // Fully optimal day
       morningScore = 7;
       morningTime = '07:45';
       morningNotes = 'Morning tea & breathing';
@@ -258,7 +254,6 @@ function generateDemoData() {
       eveningTime = '21:15';
       eveningNotes = 'Grounded evening';
     } else if (i === 3) {
-      // High hyperarousal day
       morningScore = 'MISSED';
       morningTime = 'MISSED';
       morningNotes = '';
@@ -269,7 +264,6 @@ function generateDemoData() {
       eveningTime = '19:50';
       eveningNotes = '4-7-8 breathing exercise used';
     } else if (i === 4) {
-      // Hypoarousal / exhausted day
       morningScore = 2;
       morningTime = '09:10';
       morningNotes = 'Heavy brain fog & apathy';
@@ -279,18 +273,7 @@ function generateDemoData() {
       eveningScore = 'MISSED';
       eveningTime = 'MISSED';
       eveningNotes = '';
-    } else if (i === 5) {
-      morningScore = 5;
-      morningTime = '08:00';
-      morningNotes = 'Steady start';
-      middayScore = 'MISSED';
-      middayTime = 'MISSED';
-      middayNotes = '';
-      eveningScore = 6;
-      eveningTime = '21:00';
-      eveningNotes = 'Grounded';
     } else {
-      // Randomized realistic historical pattern
       const rM = Math.random();
       morningScore = rM > 0.3 ? Math.floor(Math.random() * 5) + 3 : 'MISSED';
       morningTime = morningScore !== 'MISSED' ? '08:30' : 'MISSED';
@@ -331,7 +314,6 @@ export default function WindowOfToleranceApp() {
     return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
 
-  // Flat 7-column records state
   const [records, setRecords] = useState(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_RECORDS);
@@ -345,7 +327,6 @@ export default function WindowOfToleranceApp() {
     return generateDemoData();
   });
 
-  // GitHub REST API Settings State
   const [ghConfig, setGhConfig] = useState(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_GITHUB);
@@ -362,29 +343,22 @@ export default function WindowOfToleranceApp() {
     };
   });
 
-  // Chart Controls State (Phase 4)
-  const [timeframe, setTimeframe] = useState('7d'); // '7d' | '30d' | 'all'
+  const [timeframe, setTimeframe] = useState('7d');
   const [connectMissedLines, setConnectMissedLines] = useState(true);
 
-  // Form Logging Inputs State
   const [selectedDate, setSelectedDate] = useState(() => formatDateISO(new Date()));
   const [selectedSlot, setSelectedSlot] = useState(() => detectSlotFromSystemTime());
   const [inputTime, setInputTime] = useState(() => getCurrentTimeFormatted());
   const [selectedScore, setSelectedScore] = useState(5);
   const [inputNotes, setInputNotes] = useState('');
 
-  // Table Filters & Search
   const [searchQuery, setSearchQuery] = useState('');
-  const [zoneFilter, setZoneFilter] = useState('all'); // 'all' | 'missed' | 'hypo' | 'optimal' | 'hyper'
+  const [zoneFilter, setZoneFilter] = useState('all');
 
-  // Modals & UI States
   const [isGhModalOpen, setIsGhModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
-  const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', action: null });
-  
-  // Row Editing Modal State
   const [editRowData, setEditRowData] = useState(null);
 
   useEffect(() => {
@@ -444,7 +418,6 @@ export default function WindowOfToleranceApp() {
       const targetSlotConfig = SLOT_CONFIGS.find(s => s.id === selectedSlot);
       const targetOrder = targetSlotConfig ? targetSlotConfig.order : 0;
 
-      // Enforce auto-resolution to "MISSED" for all earlier unlogged slots
       SLOT_CONFIGS.forEach(slot => {
         if (slot.order < targetOrder) {
           const scoreKey = `${slot.id}Score`;
@@ -461,7 +434,6 @@ export default function WindowOfToleranceApp() {
         }
       });
 
-      // Update target slot
       currentRecord[`${selectedSlot}Score`] = Number(selectedScore);
       currentRecord[`${selectedSlot}Time`] = inputTime || getCurrentTimeFormatted();
       currentRecord[`${selectedSlot}Notes`] = inputNotes.trim();
@@ -555,7 +527,6 @@ export default function WindowOfToleranceApp() {
       const url = `https://api.github.com/repos/${ghConfig.owner}/${ghConfig.repo}/contents/${ghConfig.path}`;
       const branch = ghConfig.branch || 'main';
 
-      // 1. Fetch current file to retrieve existing SHA if present
       let sha = null;
       try {
         const getRes = await fetch(`${url}?ref=${branch}`, {
@@ -569,10 +540,9 @@ export default function WindowOfToleranceApp() {
           sha = getData.sha;
         }
       } catch (e) {
-        console.log('File does not exist on remote yet, will create new.');
+        console.log('File does not exist on remote yet.');
       }
 
-      // 2. PUT request to create or update file
       const payload = {
         message: `Sync Window of Tolerance logs (${records.length} days)`,
         content: base64Content,
@@ -673,7 +643,6 @@ export default function WindowOfToleranceApp() {
   };
 
   const chartTimelineData = useMemo(() => {
-    // Sort chronologically ascending for timeline
     const sorted = [...records].sort((a, b) => a.date.localeCompare(b.date));
 
     let sliced = sorted;
@@ -693,7 +662,7 @@ export default function WindowOfToleranceApp() {
         if (scoreVal !== undefined && scoreVal !== null && scoreVal !== '') {
           const isMissed = scoreVal === 'MISSED';
           const numericScore = typeof scoreVal === 'number' ? scoreVal : null;
-          const shortDate = r.date.slice(5); // "MM-DD"
+          const shortDate = r.date.slice(5);
           const slotAbbr = slot.id === 'morning' ? 'Morn' : slot.id === 'midday' ? 'Mid' : 'Eve';
 
           points.push({
@@ -704,7 +673,6 @@ export default function WindowOfToleranceApp() {
             timePointLabel: `${shortDate} - ${slotAbbr}`,
             numericScore,
             isMissed,
-            // For continuous Recharts connection when missed points toggle is ON
             displayChartVal: isMissed ? (connectMissedLines ? 5 : null) : numericScore,
             time: timeVal || 'MISSED',
             notes: notesVal || ''
@@ -741,7 +709,6 @@ export default function WindowOfToleranceApp() {
     const avgScore = totalLogged > 0 ? (sumScore / totalLogged).toFixed(1) : 'N/A';
     const complianceRate = totalSlots > 0 ? Math.round((totalLogged / totalSlots) * 100) : 0;
 
-    // Compute active logging streak (consecutive days with at least 1 logged score)
     let streak = 0;
     const sortedDates = [...records].sort((a, b) => b.date.localeCompare(a.date));
     for (const r of sortedDates) {
@@ -763,7 +730,6 @@ export default function WindowOfToleranceApp() {
     };
   }, [records]);
 
-  // Data table filtering
   const filteredRecords = useMemo(() => {
     return records.filter(r => {
       const matchesSearch = searchQuery.trim() === '' || r.date.includes(searchQuery.trim());
@@ -794,9 +760,9 @@ export default function WindowOfToleranceApp() {
       );
     }
 
-    let fill = '#10b981'; // optimal
-    if (payload.numericScore <= 3) fill = '#6366f1'; // hypo
-    if (payload.numericScore >= 8) fill = '#f43f5e'; // hyper
+    let fill = '#10b981';
+    if (payload.numericScore <= 3) fill = '#6366f1';
+    if (payload.numericScore >= 8) fill = '#f43f5e';
 
     return (
       <circle
@@ -852,6 +818,32 @@ export default function WindowOfToleranceApp() {
     return null;
   };
 
+  const handleUpdateEditedRow = (e) => {
+    e.preventDefault();
+    if (!editRowData) return;
+
+    setRecords(prev => {
+      const idx = prev.findIndex(r => r.date === editRowData.date);
+      if (idx < 0) return prev;
+      const copy = [...prev];
+      copy[idx] = {
+        ...editRowData,
+        updatedAt: new Date().toISOString()
+      };
+      return copy;
+    });
+
+    setEditRowData(null);
+    showToast(lang === 'lt' ? 'Įrašas atnaujintas' : 'Row updated successfully');
+  };
+
+  const handleDeleteRow = (dateStr) => {
+    if (window.confirm(lang === 'lt' ? `Ar tikrai ištrinti ${dateStr}?` : `Delete logs for ${dateStr}?`)) {
+      setRecords(prev => prev.filter(r => r.date !== dateStr));
+      showToast(lang === 'lt' ? 'Ištrinta' : 'Record deleted');
+    }
+  };
+
   return (
     <div className={`min-h-screen transition-colors duration-200 font-sans ${isDarkMode ? 'dark bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'} pb-20`}>
       
@@ -880,780 +872,585 @@ export default function WindowOfToleranceApp() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
             {/* GitHub Sync Status Badge */}
             <button
               onClick={() => setIsGhModalOpen(true)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl border transition ${
-                ghConfig.token
-                  ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100'
-                  : 'bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border-amber-200 dark:border-amber-800 hover:bg-amber-100'
-              }`}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-800/70 hover:bg-slate-200/80 dark:hover:bg-slate-700/80 transition text-xs font-semibold"
             >
-              <Github className="w-3.5 h-3.5" />
-              <span>{ghConfig.token ? 'GitHub Configured' : 'Setup GitHub Sync'}</span>
-              {isSyncing && <RefreshCw className="w-3 h-3 animate-spin text-emerald-600" />}
+              <Github className="w-4 h-4 text-slate-700 dark:text-slate-300" />
+              <span>{ghConfig.owner && ghConfig.repo ? `${ghConfig.owner}/${ghConfig.repo}` : 'Configure GitHub'}</span>
+              {ghConfig.token ? (
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              ) : (
+                <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+              )}
             </button>
+
+            {/* GitHub Sync Push/Pull Buttons */}
+            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-800">
+              <button
+                onClick={handlePushToGitHub}
+                disabled={isSyncing}
+                title="Push to GitHub"
+                className="p-1.5 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 transition disabled:opacity-50"
+              >
+                <Upload className={`w-4 h-4 ${isSyncing ? 'animate-bounce' : ''}`} />
+              </button>
+              <button
+                onClick={handlePullFromGitHub}
+                disabled={isSyncing}
+                title="Pull from GitHub"
+                className="p-1.5 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 transition disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
 
             {/* Language Switcher */}
             <button
               onClick={() => setLang(l => l === 'en' ? 'lt' : 'en')}
-              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition"
-              title="Toggle Language"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-800/70 hover:bg-slate-200/80 dark:hover:bg-slate-700/80 transition text-xs font-bold"
             >
               <Globe className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-              <span>{lang === 'en' ? 'LT' : 'EN'}</span>
+              <span>{lang.toUpperCase()}</span>
             </button>
 
             {/* Dark Mode Toggle */}
             <button
-              onClick={() => setIsDarkMode(!isDarkMode)}
-              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 transition"
+              onClick={() => setIsDarkMode(d => !d)}
+              className="p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-800/70 hover:bg-slate-200/80 dark:hover:bg-slate-700/80 transition text-slate-700 dark:text-slate-300"
             >
               {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-600" />}
             </button>
           </div>
-
         </div>
       </header>
 
+      {/* TOAST ALERT */}
+      {toastMessage && (
+        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl shadow-2xl border text-sm font-bold backdrop-blur-md animate-fade-in ${
+          toastMessage.type === 'error'
+            ? 'bg-rose-500/90 text-white border-rose-600'
+            : 'bg-emerald-600/90 text-white border-emerald-500'
+        }`}>
+          {toastMessage.type === 'error' ? <AlertTriangle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
+          <span>{toastMessage.msg}</span>
+        </div>
+      )}
+
       {/* MAIN CONTAINER */}
       <main className="max-w-7xl mx-auto px-4 lg:px-8 pt-6 space-y-8">
-
-        {/* TOAST NOTIFICATION FLOATER */}
-        {toastMessage && (
-          <div className={`fixed bottom-5 right-5 z-50 flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-2xl text-xs font-bold border transition-all animate-bounce ${
-            toastMessage.type === 'error'
-              ? 'bg-rose-600 text-white border-rose-700'
-              : toastMessage.type === 'info'
-              ? 'bg-slate-900 text-white border-slate-800'
-              : 'bg-emerald-600 text-white border-emerald-700'
-          }`}>
-            <CheckCircle2 className="w-4 h-4" />
-            <span>{toastMessage.msg}</span>
-          </div>
-        )}
-
-        {}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          
-          <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
-            <div>
-              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                {lang === 'lt' ? 'Optimalioje Zonoje' : '% Time in Optimal Window'}
-              </span>
-              <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
-                {analyticsKPIs.optimalPct}%
-              </h3>
-              <p className="text-[10px] text-slate-400 mt-0.5">
-                {lang === 'lt' ? 'Įverčiai tarp 4 ir 7' : 'Scores between 4 and 7'}
-              </p>
-            </div>
-            <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400">
-              <Shield className="w-6 h-6" />
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
-            <div>
-              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                {lang === 'lt' ? 'Vidutinis Sujaudinimas' : 'Average Emotional Score'}
-              </span>
-              <h3 className="text-2xl font-black text-indigo-600 dark:text-indigo-400 mt-1">
-                {analyticsKPIs.avgScore} <span className="text-xs text-slate-400 font-normal">/ 10</span>
-              </h3>
-              <p className="text-[10px] text-slate-400 mt-0.5">
-                {lang === 'lt' ? 'Registruotų įrašų vidurkis' : 'Average of valid logs'}
-              </p>
-            </div>
-            <div className="p-3 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
-              <Activity className="w-6 h-6" />
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
-            <div>
-              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                {lang === 'lt' ? 'Laikymosi Rodiklis' : 'Compliance & Missed'}
-              </span>
-              <h3 className="text-2xl font-black text-teal-600 dark:text-teal-400 mt-1">
-                {analyticsKPIs.complianceRate}%
-              </h3>
-              <p className="text-[10px] text-rose-500 font-semibold mt-0.5">
-                {analyticsKPIs.totalMissed} {lang === 'lt' ? 'praleisti slotai' : 'missed slots total'}
-              </p>
-            </div>
-            <div className="p-3 rounded-2xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400">
-              <TrendingUp className="w-6 h-6" />
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between">
-            <div>
-              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                {lang === 'lt' ? 'Aktyvus Srautas' : 'Logging Streak'}
-              </span>
-              <h3 className="text-2xl font-black text-amber-500 mt-1">
-                {analyticsKPIs.streak} {lang === 'lt' ? 'd' : 'days'}
-              </h3>
-              <p className="text-[10px] text-slate-400 mt-0.5">
-                {lang === 'lt' ? 'Nepertraukiamos dienos' : 'Consecutive daily logs'}
-              </p>
-            </div>
-            <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-500">
+        
+        {/* TOP KPI CARDS */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-3.5">
+            <div className="p-3 rounded-xl bg-orange-100 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400">
               <Flame className="w-6 h-6" />
             </div>
+            <div>
+              <p className="text-2xl font-extrabold">{analyticsKPIs.streak} {lang === 'lt' ? 'd.' : 'days'}</p>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{lang === 'lt' ? 'Aktyvi serija' : 'Active Streak'}</p>
+            </div>
           </div>
 
+          <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-3.5">
+            <div className="p-3 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400">
+              <Shield className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-2xl font-extrabold">{analyticsKPIs.optimalPct}%</p>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{lang === 'lt' ? 'Optimali zona' : 'Optimal Zone'}</p>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-3.5">
+            <div className="p-3 rounded-xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
+              <TrendingUp className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-2xl font-extrabold">{analyticsKPIs.avgScore}</p>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{lang === 'lt' ? 'Vid. balas' : 'Avg Score'}</p>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-3.5">
+            <div className="p-3 rounded-xl bg-teal-100 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400">
+              <Activity className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-2xl font-extrabold">{analyticsKPIs.complianceRate}%</p>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{lang === 'lt' ? 'Pildymo rodiklis' : 'Compliance Rate'}</p>
+            </div>
+          </div>
         </div>
 
-        {}
-        <section className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-7 shadow-sm border border-slate-200 dark:border-slate-800 space-y-6">
-          
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-5">
-            <div>
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
-                  <BarChart2 className="w-5 h-5" />
-                </div>
-                <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                  {lang === 'lt' ? 'Emocinės Būsenos Dinamika (Recharts)' : 'Window of Tolerance Emotional Trend'}
-                </h2>
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                {lang === 'lt'
-                  ? 'Chronologinė sujaudinimo kitimo linija su spalviniais fono diapazonais'
-                  : 'Chronological timeline chart mapped over Hyperarousal, Optimal, and Hypoarousal reference bands.'}
-              </p>
+        {/* LOGGING FORM PANEL */}
+        <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <PlusCircle className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+              <h2 className="text-lg font-bold">{lang === 'lt' ? 'Registruoti Būsenos Įrašą' : 'Log Daily State'}</h2>
             </div>
-
-            {/* Timeframe & Line Controls */}
-            <div className="flex flex-wrap items-center gap-3">
-              
-              {/* Connect Missed Lines Toggle */}
-              <button
-                onClick={() => setConnectMissedLines(!connectMissedLines)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl border transition ${
-                  connectMissedLines
-                    ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-300 dark:border-indigo-800'
-                    : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-slate-200 dark:border-slate-700'
-                }`}
-                title="Toggle connecting lines across missed slots"
-              >
-                {connectMissedLines ? <LinkIcon className="w-3.5 h-3.5" /> : <Unlink className="w-3.5 h-3.5" />}
-                <span>{lang === 'lt' ? 'Sujungti praleistus' : 'Connect Missed Dots'}</span>
-              </button>
-
-              {/* Timeframe Filter Switcher */}
-              <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs font-bold">
-                <button
-                  onClick={() => setTimeframe('7d')}
-                  className={`px-3 py-1 rounded-xl transition ${timeframe === '7d' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs' : 'text-slate-500'}`}
-                >
-                  7 Days
-                </button>
-                <button
-                  onClick={() => setTimeframe('30d')}
-                  className={`px-3 py-1 rounded-xl transition ${timeframe === '30d' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs' : 'text-slate-500'}`}
-                >
-                  30 Days
-                </button>
-                <button
-                  onClick={() => setTimeframe('all')}
-                  className={`px-3 py-1 rounded-xl transition ${timeframe === 'all' ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs' : 'text-slate-500'}`}
-                >
-                  All
-                </button>
-              </div>
-
-            </div>
-          </div>
-
-          {/* Zone Legend Indicator Bar */}
-          <div className="grid grid-cols-3 gap-2 text-[11px] font-bold">
-            <div className="flex items-center justify-center gap-1.5 p-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200/60 dark:border-rose-900/50">
-              <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
-              <span>Upper: Hyperarousal (8-10)</span>
-            </div>
-            <div className="flex items-center justify-center gap-1.5 p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-900/50">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-              <span>Middle: Optimal Window (4-7)</span>
-            </div>
-            <div className="flex items-center justify-center gap-1.5 p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-900/50">
-              <span className="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
-              <span>Lower: Hypoarousal (1-3)</span>
-            </div>
-          </div>
-
-          {/* Recharts Chart Container */}
-          <div className="h-80 w-full pt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartTimelineData} margin={{ top: 10, right: 15, left: -20, bottom: 25 }}>
-                <CartesianGrid strokeDasharray="3 3" opacity={isDarkMode ? 0.15 : 0.4} />
-                
-                <XAxis
-                  dataKey="timePointLabel"
-                  tick={{ fontSize: 10, fill: isDarkMode ? '#94a3b8' : '#64748b' }}
-                  interval="preserveStartEnd"
-                  angle={-25}
-                  textAnchor="end"
-                  height={45}
-                />
-                
-                <YAxis
-                  domain={[0.5, 10.5]}
-                  ticks={[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}
-                  tick={{ fontSize: 11, fill: isDarkMode ? '#94a3b8' : '#64748b' }}
-                />
-
-                {/* Background Reference Zones */}
-                {/* 1. Upper Zone: Hyperarousal (8-10) */}
-                <ReferenceArea y1={7.5} y2={10.5} fill={isDarkMode ? 'rgba(159,18,57,0.18)' : '#fef2f2'} fillOpacity={0.8} />
-                
-                {/* 2. Middle Zone: Optimal Window (4-7) */}
-                <ReferenceArea y1={3.5} y2={7.5} fill={isDarkMode ? 'rgba(6,78,59,0.18)' : '#f0fdf4'} fillOpacity={0.8} />
-                
-                {/* 3. Lower Zone: Hypoarousal (1-3) */}
-                <ReferenceArea y1={0.5} y2={3.5} fill={isDarkMode ? 'rgba(30,27,75,0.18)' : '#eef2ff'} fillOpacity={0.8} />
-
-                <RechartsTooltip content={<CustomChartTooltip />} />
-
-                {/* Sequential Emotional Line */}
-                <Line
-                  type="monotone"
-                  dataKey="displayChartVal"
-                  stroke="#0f766e"
-                  strokeWidth={3}
-                  connectNulls={connectMissedLines}
-                  dot={renderCustomChartDot}
-                  activeDot={{ r: 8, stroke: '#ffffff', strokeWidth: 2, fill: '#0d9488' }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-
-        </section>
-
-        {}
-        <section className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-7 shadow-sm border border-slate-200 dark:border-slate-800 space-y-6">
-          
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-5">
-            <div>
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-teal-100 dark:bg-teal-950 text-teal-700 dark:text-teal-300">
-                  <PlusCircle className="w-5 h-5" />
-                </div>
-                <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                  {lang === 'lt' ? 'Įvesti Tolerancijos Lango Įrašą' : 'Log Daily Emotional State'}
-                </h2>
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                {lang === 'lt'
-                  ? 'Įvedus vėlesnį dienos slotą, neįvesti ankstesni slotai bus automatiškai pažymėti MISSED.'
-                  : 'Select date, time slot, and score. Unlogged earlier slots for the date will automatically resolve to MISSED.'}
-              </p>
-            </div>
+            <span className="text-xs text-slate-500 dark:text-slate-400">
+              {lang === 'lt' ? 'Auto-praleidimas atgaliniams slotams' : 'Auto-resolves earlier unlogged slots as MISSED'}
+            </span>
           </div>
 
           <form onSubmit={handleSaveEntry} className="space-y-6">
-
-            {/* DATE & TIME CONTROLS */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              
-              {/* Date Input */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Date Selection */}
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-teal-600" />
-                  <span>{lang === 'lt' ? '1. Pasirinkite Data:' : '1. Select Date:'}</span>
+                <label className="text-xs font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>{lang === 'lt' ? 'Data' : 'Date'}</span>
                 </label>
                 <input
                   type="date"
                   value={selectedDate}
-                  onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
-                  className="w-full p-2.5 text-sm font-semibold rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500"
                 />
               </div>
 
-              {/* Time Slot Selection */}
-              <div className="space-y-1.5 lg:col-span-2">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>{lang === 'lt' ? '2. Laiko Slotas:' : '2. Select Time Slot:'}</span>
+              {/* Time Slot Selector */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>{lang === 'lt' ? 'Dienos Metas (Slotas)' : 'Time Slot'}</span>
                 </label>
-                
-                <div className="grid grid-cols-3 gap-2">
-                  {SLOT_CONFIGS.map((slot) => {
-                    const Icon = slot.icon;
-                    const isSelected = selectedSlot === slot.id;
-                    const isDetected = detectSlotFromSystemTime() === slot.id && selectedDate === formatDateISO(new Date());
-
+                <div className="grid grid-cols-3 gap-1.5">
+                  {SLOT_CONFIGS.map(s => {
+                    const Icon = s.icon;
+                    const isActive = selectedSlot === s.id;
                     return (
                       <button
-                        key={slot.id}
+                        key={s.id}
                         type="button"
-                        onClick={() => setSelectedSlot(slot.id)}
-                        className={`relative flex items-center justify-center gap-2 p-2.5 rounded-2xl border text-xs font-bold transition-all ${
-                          isSelected
-                            ? 'border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 shadow-xs'
-                            : 'border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        onClick={() => setSelectedSlot(s.id)}
+                        className={`flex flex-col items-center justify-center p-2 rounded-xl border text-xs font-bold transition ${
+                          isActive
+                            ? 'bg-teal-600 text-white border-teal-600 shadow-md shadow-teal-500/20'
+                            : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                         }`}
                       >
-                        {isDetected && (
-                          <span className="absolute -top-2 right-2 px-1.5 py-0.2 text-[9px] font-black rounded-full bg-emerald-600 text-white shadow-xs">
-                            System
-                          </span>
-                        )}
-                        <Icon className={`w-4 h-4 ${isSelected ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`} />
-                        <span>{lang === 'lt' ? slot.nameLt : slot.nameEn}</span>
+                        <Icon className="w-4 h-4 mb-0.5" />
+                        <span>{lang === 'lt' ? s.nameLt : s.nameEn}</span>
                       </button>
                     );
                   })}
                 </div>
               </div>
 
+              {/* Specific Time Input */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>{lang === 'lt' ? 'Laikas' : 'Logged Time'}</span>
+                </label>
+                <input
+                  type="time"
+                  value={inputTime}
+                  onChange={(e) => setInputTime(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
             </div>
 
-            {/* LIKERT RATING SCORE SELECTOR */}
-            <div className="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-800">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                    {lang === 'lt' ? '3. Sujaudinimo Lygis (1-10 Likert Skalė):' : '3. Emotional Arousal Rating (1 to 10 Scale):'}
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    {lang === 'lt' ? 'Mėlyna = Žema energija | Žalia = Optimali | Raudona = Hiper-nerimas' : 'Blue = Hypoarousal | Green = Optimal Tolerance | Red = Hyperarousal'}
-                  </p>
-                </div>
-
-                {activeZone && (
-                  <span className={`px-3 py-1 text-xs font-bold rounded-full border ${activeZone.bgBadge}`}>
-                    {lang === 'lt' ? activeZone.nameLt : activeZone.nameEn}
-                  </span>
-                )}
+            {/* Score Selector (1-10) */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+                  <Sliders className="w-3.5 h-3.5" />
+                  <span>{lang === 'lt' ? 'Nervų Sistemos Sujaudinimo Lygis (1-10)' : 'Nervous System Arousal Scale (1-10)'}</span>
+                </label>
+                <span className={`px-3 py-1 rounded-full text-xs font-extrabold border ${activeZone?.bgBadge}`}>
+                  {selectedScore} - {activeZone?.shortName}
+                </span>
               </div>
 
-              {/* 10 Rating Buttons Grid */}
-              <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => {
-                  const numZone = getZoneByScore(num);
-                  const isSelected = selectedScore === num;
-
-                  let btnStyle = numZone.btnDefault;
-                  if (isSelected) {
-                    btnStyle = numZone.btnActive;
-                  }
-
+              <div className="grid grid-cols-10 gap-1.5">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(val => {
+                  const valZone = getZoneByScore(val);
+                  const isSelected = selectedScore === val;
                   return (
                     <button
-                      key={num}
+                      key={val}
                       type="button"
-                      onClick={() => setSelectedScore(num)}
-                      className={`h-12 sm:h-14 rounded-2xl font-extrabold text-base transition-all duration-150 flex flex-col items-center justify-center ${btnStyle}`}
+                      onClick={() => setSelectedScore(val)}
+                      className={`py-3 rounded-xl font-black text-sm transition-all ${
+                        isSelected
+                          ? valZone?.btnActive
+                          : valZone?.btnDefault
+                      }`}
                     >
-                      <span>{num}</span>
-                      <span className="text-[9px] font-medium opacity-75 hidden sm:block">
-                        {num <= 3 ? 'Hypo' : num <= 7 ? 'Optimal' : 'Hyper'}
-                      </span>
+                      {val}
                     </button>
                   );
                 })}
               </div>
-
-              {/* Context Notes & Time Input Row */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-                
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>{lang === 'lt' ? 'Užregistruotas Laikas:' : 'Exact Log Time:'}</span>
-                  </label>
-                  <input
-                    type="time"
-                    value={inputTime}
-                    onChange={(e) => setInputTime(e.target.value)}
-                    className="w-full p-2.5 text-sm font-semibold rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-
-                <div className="space-y-1.5 sm:col-span-2">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                    <FileText className="w-3.5 h-3.5 text-teal-600" />
-                    <span>{lang === 'lt' ? 'Pastabos / Kontekstas (neprivaloma):' : 'Contextual Notes & Somatic Triggers (Optional):'}</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={inputNotes}
-                    onChange={(e) => setInputNotes(e.target.value)}
-                    placeholder={lang === 'lt' ? 'Pvz., Stresas darbe, ramus pasivaikščiojimas...' : 'e.g., Felt nervous before meeting, deep breathing helped...'}
-                    className="w-full p-2.5 text-sm rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-
-              </div>
-
-              {/* Somatic Feedback Box */}
-              {activeZone && (
-                <div className={`p-4 rounded-2xl border space-y-2 transition-all ${activeZone.cardBg}`}>
-                  <div className="flex items-center gap-2">
-                    {activeZone.id === 'hypo' && <Moon className="w-5 h-5 text-indigo-600" />}
-                    {activeZone.id === 'optimal' && <Shield className="w-5 h-5 text-emerald-600" />}
-                    {activeZone.id === 'hyper' && <Zap className="w-5 h-5 text-rose-600" />}
-                    <span className="font-bold text-sm text-slate-900 dark:text-slate-100">
-                      {lang === 'lt' ? activeZone.subtitleLt : activeZone.subtitleEn}
-                    </span>
-                  </div>
-
-                  <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
-                    {lang === 'lt' ? activeZone.descLt : activeZone.descEn}
-                  </p>
-
-                  <div className="pt-1 text-xs border-t border-slate-200/50 dark:border-slate-800/50">
-                    <strong className="text-slate-900 dark:text-slate-100">
-                      💡 {lang === 'lt' ? 'Kūno reguliavimo patarimas: ' : 'Somatic Regulation Advice: '}
-                    </strong>
-                    <span className="text-slate-600 dark:text-slate-400">
-                      {lang === 'lt' ? activeZone.physioLt : activeZone.physioEn}
-                    </span>
-                  </div>
-                </div>
-              )}
-
             </div>
 
-            {/* Save Button */}
-            <div className="pt-2 flex justify-end">
+            {/* Zone Physiological Advice Card */}
+            {activeZone && (
+              <div className={`p-4 rounded-2xl border ${activeZone.cardBg} space-y-2`}>
+                <div className="flex items-center justify-between">
+                  <h4 className="font-extrabold text-sm">{lang === 'lt' ? activeZone.nameLt : activeZone.nameEn}</h4>
+                  <span className="text-xs font-semibold opacity-80">{lang === 'lt' ? activeZone.subtitleLt : activeZone.subtitleEn}</span>
+                </div>
+                <p className="text-xs opacity-90">{lang === 'lt' ? activeZone.descLt : activeZone.descEn}</p>
+                <div className="pt-1 text-xs font-bold flex items-start gap-1.5">
+                  <Sparkles className="w-4 h-4 shrink-0 text-amber-500 mt-0.5" />
+                  <span><strong>{lang === 'lt' ? 'Rekomenduojamas veiksmas: ' : 'Physiological Action: '}</strong>{lang === 'lt' ? activeZone.physioLt : activeZone.physioEn}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Notes Input & Save Button */}
+            <div className="flex flex-col sm:flex-row gap-4 items-end">
+              <div className="w-full space-y-1.5">
+                <label className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                  {lang === 'lt' ? 'Užrašai / Šeimininkavimo trigeriai (neprivaloma)' : 'Reflective Notes / Triggers (Optional)'}
+                </label>
+                <input
+                  type="text"
+                  placeholder={lang === 'lt' ? 'Pvz., Sunkus susitikimas darbe, kava 15 val...' : 'E.g., Work presentation stress, afternoon coffee...'}
+                  value={inputNotes}
+                  onChange={(e) => setInputNotes(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
               <button
                 type="submit"
-                className="flex items-center gap-2 px-7 py-3 rounded-2xl font-extrabold text-sm bg-gradient-to-r from-teal-600 via-emerald-600 to-indigo-600 hover:from-teal-700 hover:to-indigo-700 text-white shadow-md shadow-emerald-500/20 active:scale-95 transition"
+                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-extrabold text-sm shadow-md shadow-emerald-500/20 transition shrink-0"
               >
-                <Check className="w-4 h-4" />
-                <span>{lang === 'lt' ? 'Išsaugoti dienos įrašą' : 'Save Slot Entry'}</span>
+                {lang === 'lt' ? 'Išsaugoti Įrašą' : 'Save Slot Entry'}
               </button>
             </div>
-
           </form>
+        </div>
 
-        </section>
-
-        {}
-        <section className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-7 shadow-sm border border-slate-200 dark:border-slate-800 space-y-6">
-          
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-5">
+        {/* TIMELINE CHART SECTION */}
+        <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <div className="flex items-center gap-2">
-                <FileSpreadsheet className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                  {lang === 'lt' ? '7-Stulpelių Istorijos Registras' : '7-Column Flat Daily History'}
-                </h2>
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                [ Date | Morning Score & Time | Midday Score & Time | Evening Score & Time ]
+              <h2 className="text-lg font-bold flex items-center gap-2">
+                <BarChart2 className="w-5 h-5 text-indigo-500" />
+                <span>{lang === 'lt' ? 'Nervų Sistemos Dinamika' : 'Autonomic Nervous System Timeline'}</span>
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {lang === 'lt' ? 'Chromatinė zonų analizė (3 time slotai per dieną)' : 'Color-coded zones with 3 intraday slot intervals'}
               </p>
             </div>
 
-            {/* Action Toolbar */}
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-3 flex-wrap">
+              {/* Connect Missed Lines Toggle */}
+              <label className="flex items-center gap-2 text-xs font-semibold cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={connectMissedLines}
+                  onChange={(e) => setConnectMissedLines(e.target.checked)}
+                  className="rounded text-teal-600 focus:ring-teal-500"
+                />
+                <span>{lang === 'lt' ? 'Jungti praleistus' : 'Connect Missed Points'}</span>
+              </label>
+
+              {/* Timeframe Buttons */}
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+                {['7d', '30d', 'all'].map((tf) => (
+                  <button
+                    key={tf}
+                    onClick={() => setTimeframe(tf)}
+                    className={`px-3 py-1 rounded-lg text-xs font-extrabold transition ${
+                      timeframe === tf
+                        ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    {tf.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Recharts Chart */}
+          <div className="h-72 w-full pt-4">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartTimelineData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
+                <XAxis
+                  dataKey="timePointLabel"
+                  tick={{ fontSize: 10 }}
+                  stroke="#94a3b8"
+                />
+                <YAxis
+                  domain={[1, 10]}
+                  ticks={[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}
+                  tick={{ fontSize: 10 }}
+                  stroke="#94a3b8"
+                />
+                <RechartsTooltip content={<CustomChartTooltip />} />
+
+                {/* Hypo Zone Shading (1-3) */}
+                <ReferenceArea y1={1} y2={3.5} fill="#6366f1" fillOpacity={0.08} />
+                {/* Optimal Zone Shading (4-7) */}
+                <ReferenceArea y1={3.5} y2={7.5} fill="#10b981" fillOpacity={0.12} />
+                {/* Hyper Zone Shading (8-10) */}
+                <ReferenceArea y1={7.5} y2={10} fill="#f43f5e" fillOpacity={0.08} />
+
+                <Line
+                  type="monotone"
+                  dataKey="displayChartVal"
+                  stroke="#10b981"
+                  strokeWidth={2.5}
+                  connectNulls={true}
+                  dot={renderCustomChartDot}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Chart Legend */}
+          <div className="flex items-center justify-center gap-6 text-xs font-bold pt-2 border-t border-slate-100 dark:border-slate-800/80">
+            <div className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-full bg-indigo-500"></span>
+              <span>1-3: Hypoarousal</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
+              <span>4-7: Optimal Window</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-full bg-rose-500"></span>
+              <span>8-10: Hyperarousal</span>
+            </div>
+          </div>
+        </div>
+
+        {/* LOGS DATA TABLE SECTION */}
+        <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-bold flex items-center gap-2">
+                <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
+                <span>{lang === 'lt' ? 'Žurnalas ir Eksportas' : 'Data Log Table & Exports'}</span>
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {lang === 'lt' ? 'Plokščia 7 stulpelių duomenų struktūra su Excel atitikmeniu' : 'Flat 7-column schema ready for SheetJS XLSX download'}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
               <button
                 onClick={handleDownloadXLSX}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition"
-                title="Download Excel file directly to your device"
+                className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-sm transition"
               >
-                <Download className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Download .xlsx</span>
+                <Download className="w-4 h-4" />
+                <span>{lang === 'lt' ? 'Atsisiųsti XLSX' : 'Export .xlsx'}</span>
               </button>
 
               <button
                 onClick={handlePushToGitHub}
                 disabled={isSyncing}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/50 dark:hover:bg-indigo-900/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition"
+                className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white text-xs font-bold shadow-sm transition"
               >
-                <Upload className="w-3.5 h-3.5 text-indigo-600" />
-                <span>{isSyncing ? 'Syncing...' : 'Sync to GitHub'}</span>
-              </button>
-
-              <button
-                onClick={handlePullFromGitHub}
-                disabled={isSyncing}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${isSyncing ? 'animate-spin' : ''}`} />
-                <span>Pull GitHub</span>
-              </button>
-
-              <button
-                onClick={() => setRecords(generateDemoData())}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:hover:bg-amber-900/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800 transition"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                <span>Seed 14 Days</span>
+                <Github className="w-4 h-4" />
+                <span>{lang === 'lt' ? 'Siųsti į GitHub' : 'Push to GitHub'}</span>
               </button>
             </div>
           </div>
 
-          {/* Search & Zone Filters */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50 dark:bg-slate-800/40 p-3 rounded-2xl border border-slate-200 dark:border-slate-800">
+          {/* Search & Filter controls */}
+          <div className="flex flex-col sm:flex-row items-center gap-3">
             <div className="relative w-full sm:w-64">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+              <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
               <input
                 type="text"
+                placeholder={lang === 'lt' ? 'Iškada pagal datą (YYYY-MM-DD)...' : 'Filter by date (YYYY-MM-DD)...'}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={lang === 'lt' ? 'Ieškoti pagal datą...' : 'Filter by date (YYYY-MM)...'}
-                className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
             </div>
 
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <Filter className="w-3.5 h-3.5 text-slate-500" />
-              <span className="text-xs font-bold text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                {lang === 'lt' ? 'Filtras:' : 'Filter:'}
-              </span>
-              <select
-                value={zoneFilter}
-                onChange={(e) => setZoneFilter(e.target.value)}
-                className="p-1.5 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                <option value="all">All Entries</option>
-                <option value="missed">Has MISSED slots</option>
-                <option value="hypo">Has Hypoarousal (1-3)</option>
-                <option value="optimal">Has Optimal (4-7)</option>
-                <option value="hyper">Has Hyperarousal (8-10)</option>
-              </select>
+            <div className="flex items-center gap-1 overflow-x-auto w-full pb-1 sm:pb-0">
+              {[
+                { id: 'all', label: lang === 'lt' ? 'Visi' : 'All' },
+                { id: 'optimal', label: 'Optimal (4-7)' },
+                { id: 'hypo', label: 'Hypo (1-3)' },
+                { id: 'hyper', label: 'Hyper (8-10)' },
+                { id: 'missed', label: lang === 'lt' ? 'Praleisti' : 'Missed' }
+              ].map(f => (
+                <button
+                  key={f.id}
+                  onClick={() => setZoneFilter(f.id)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap ${
+                    zoneFilter === f.id
+                      ? 'bg-teal-600 text-white shadow-xs'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Table Container */}
-          <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
-            <table className="w-full text-left border-collapse min-w-[760px]">
-              <thead>
-                <tr className="bg-slate-100/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 text-xs font-extrabold uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
-                  <th className="py-3.5 px-4 border-r border-slate-200 dark:border-slate-800">
-                    Date
-                  </th>
-                  <th className="py-3.5 px-3 text-center border-r border-slate-200 dark:border-slate-800 bg-amber-50/30 dark:bg-amber-950/10">
-                    Morning
-                  </th>
-                  <th className="py-3.5 px-3 text-center border-r border-slate-200 dark:border-slate-800 bg-amber-50/30 dark:bg-amber-950/10">
-                    Morn Time
-                  </th>
-                  <th className="py-3.5 px-3 text-center border-r border-slate-200 dark:border-slate-800 bg-emerald-50/30 dark:bg-emerald-950/10">
-                    Midday
-                  </th>
-                  <th className="py-3.5 px-3 text-center border-r border-slate-200 dark:border-slate-800 bg-emerald-50/30 dark:bg-emerald-950/10">
-                    Mid Time
-                  </th>
-                  <th className="py-3.5 px-3 text-center border-r border-slate-200 dark:border-slate-800 bg-indigo-50/30 dark:bg-indigo-950/10">
-                    Evening
-                  </th>
-                  <th className="py-3.5 px-3 text-center border-r border-slate-200 dark:border-slate-800 bg-indigo-50/30 dark:bg-indigo-950/10">
-                    Eve Time
-                  </th>
-                  <th className="py-3.5 px-3 text-center">
-                    Actions
-                  </th>
+          {/* Data Table */}
+          <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-100 dark:bg-slate-800/80 font-extrabold text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-800">
+                <tr>
+                  <th className="p-3.5">{lang === 'lt' ? 'Data' : 'Date'}</th>
+                  <th className="p-3.5">{lang === 'lt' ? 'Rytas (Morning)' : 'Morning (06-12)'}</th>
+                  <th className="p-3.5">{lang === 'lt' ? 'Diena (Midday)' : 'Midday (12-18)'}</th>
+                  <th className="p-3.5">{lang === 'lt' ? 'Vakaras (Evening)' : 'Evening (18-24)'}</th>
+                  <th className="p-3.5 text-right">{lang === 'lt' ? 'Veiksmai' : 'Actions'}</th>
                 </tr>
               </thead>
-
-              <tbody className="divide-y divide-slate-200 dark:divide-slate-800 text-xs">
-                {filteredRecords.length > 0 ? (
-                  filteredRecords.map((record) => {
-                    
-                    const renderCell = (scoreVal, timeVal) => {
-                      const isMissed = scoreVal === 'MISSED' || scoreVal === null || scoreVal === undefined;
-
-                      if (isMissed) {
-                        return {
-                          score: (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200/50 dark:border-rose-900/40">
-                              MISSED
-                            </span>
-                          ),
-                          time: <span className="text-[10px] text-rose-400 italic">MISSED</span>
-                        };
-                      }
-
-                      const zone = getZoneByScore(scoreVal);
-                      return {
-                        score: (
-                          <span className={`inline-flex items-center justify-center w-7 h-7 rounded-lg font-black text-xs border ${zone?.bgBadge}`}>
-                            {scoreVal}
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
+                {filteredRecords.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="p-8 text-center text-slate-400 font-semibold">
+                      {lang === 'lt' ? 'Įrašų nerasta' : 'No matching records found'}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredRecords.map((r) => {
+                    const renderSlotCell = (score, time, notes) => {
+                      if (score === 'MISSED') {
+                        return (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-400 font-mono text-[11px] font-bold">
+                            MISSED
                           </span>
-                        ),
-                        time: <span className="font-semibold text-slate-700 dark:text-slate-300">{timeVal || '-'}</span>
-                      };
+                        );
+                      }
+                      const zone = getZoneByScore(score);
+                      return (
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className={`px-2 py-0.5 rounded-md font-black text-xs ${zone?.bgBadge}`}>
+                              {score}/10
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-mono">{time}</span>
+                          </div>
+                          {notes && <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate max-w-[140px] italic">{notes}</p>}
+                        </div>
+                      );
                     };
 
-                    const morn = renderCell(record.morningScore, record.morningTime);
-                    const mid = renderCell(record.middayScore, record.middayTime);
-                    const eve = renderCell(record.eveningScore, record.eveningTime);
-
                     return (
-                      <tr key={record.date} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition">
-                        
-                        <td className="py-3 px-4 font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap border-r border-slate-200 dark:border-slate-800">
-                          <div className="flex items-center gap-1.5">
-                            <span>{record.date}</span>
-                            <span className="text-[10px] text-slate-400 font-normal">
-                              ({formatDisplayDate(record.date, lang)})
-                            </span>
-                          </div>
+                      <tr key={r.date} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition">
+                        <td className="p-3.5 font-bold font-mono text-slate-900 dark:text-slate-100">
+                          {r.date}
+                          <span className="block text-[10px] font-normal text-slate-400">
+                            {formatDisplayDate(r.date, lang)}
+                          </span>
                         </td>
-
-                        <td className="py-3 px-3 text-center border-r border-slate-200 dark:border-slate-800">{morn.score}</td>
-                        <td className="py-3 px-3 text-center border-r border-slate-200 dark:border-slate-800">{morn.time}</td>
-                        
-                        <td className="py-3 px-3 text-center border-r border-slate-200 dark:border-slate-800">{mid.score}</td>
-                        <td className="py-3 px-3 text-center border-r border-slate-200 dark:border-slate-800">{mid.time}</td>
-
-                        <td className="py-3 px-3 text-center border-r border-slate-200 dark:border-slate-800">{eve.score}</td>
-                        <td className="py-3 px-3 text-center border-r border-slate-200 dark:border-slate-800">{eve.time}</td>
-
-                        <td className="py-3 px-3 text-center whitespace-nowrap">
-                          <div className="flex items-center justify-center gap-1">
-                            <button
-                              onClick={() => setEditRowData({ ...record })}
-                              className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition"
-                              title="Edit Day Record"
-                            >
-                              <Edit3 className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                setConfirmModal({
-                                  isOpen: true,
-                                  title: `Delete record for ${record.date}?`,
-                                  message: 'This will purge this entry from history.',
-                                  action: () => {
-                                    setRecords(prev => prev.filter(r => r.date !== record.date));
-                                    setConfirmModal({ isOpen: false, title: '', message: '', action: null });
-                                    showToast('Record deleted');
-                                  }
-                                });
-                              }}
-                              className="p-1.5 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-950/60 text-rose-600 transition"
-                              title="Delete Row"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+                        <td className="p-3.5">{renderSlotCell(r.morningScore, r.morningTime, r.morningNotes)}</td>
+                        <td className="p-3.5">{renderSlotCell(r.middayScore, r.middayTime, r.middayNotes)}</td>
+                        <td className="p-3.5">{renderSlotCell(r.eveningScore, r.eveningTime, r.eveningNotes)}</td>
+                        <td className="p-3.5 text-right space-x-1">
+                          <button
+                            onClick={() => setEditRowData({ ...r })}
+                            className="p-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 transition"
+                            title="Edit Record"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteRow(r.date)}
+                            className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-950/50 transition"
+                            title="Delete Record"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </td>
-
                       </tr>
                     );
                   })
-                ) : (
-                  <tr>
-                    <td colSpan={8} className="py-8 text-center text-slate-400 italic">
-                      No records found matching filter criteria.
-                    </td>
-                  </tr>
                 )}
               </tbody>
             </table>
           </div>
-
-        </section>
-
+        </div>
       </main>
 
-      {}
+      {/* GITHUB CONFIGURATION MODAL */}
       {isGhModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-slate-200 dark:border-slate-800 space-y-5">
-            
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="w-full max-w-lg p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-5">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <div className="flex items-center gap-2">
-                <Github className="w-5 h-5 text-indigo-600" />
-                <h3 className="font-extrabold text-slate-900 dark:text-slate-100 text-base">
-                  GitHub REST API Sync Settings
-                </h3>
+                <Github className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+                <h3 className="font-extrabold text-base">{lang === 'lt' ? 'GitHub REST API Parametrai' : 'GitHub REST API Sync Settings'}</h3>
               </div>
               <button
                 onClick={() => setIsGhModalOpen(false)}
-                className="p-1 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400"
+                className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Configure your Personal Access Token (PAT) and repository to automatically read and save Excel (<code className="text-emerald-600">.xlsx</code>) logbooks directly to your GitHub repository.
-            </p>
-
-            <div className="space-y-3 text-xs">
-              
-              <div>
-                <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                  Personal Access Token (PAT):
-                </label>
-                <div className="relative">
-                  <Key className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
-                  <input
-                    type="password"
-                    value={ghConfig.token}
-                    onChange={(e) => setGhConfig({ ...ghConfig, token: e.target.value })}
-                    placeholder="ghp_xxxxxxxxxxxx"
-                    className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono text-xs"
-                  />
-                </div>
+            <div className="space-y-4 text-xs font-semibold">
+              <div className="space-y-1">
+                <label className="text-slate-600 dark:text-slate-400">{lang === 'lt' ? 'GitHub Personal Access Token' : 'GitHub Token (PAT)'}</label>
+                <input
+                  type="password"
+                  placeholder="ghp_xxxxxxxxxxxx"
+                  value={ghConfig.token}
+                  onChange={(e) => setGhConfig({ ...ghConfig, token: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-mono"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    Repo Owner / Username:
-                  </label>
+                <div className="space-y-1">
+                  <label className="text-slate-600 dark:text-slate-400">{lang === 'lt' ? 'Vartotojas / Org' : 'Owner / Org'}</label>
                   <input
                     type="text"
+                    placeholder="octocat"
                     value={ghConfig.owner}
                     onChange={(e) => setGhConfig({ ...ghConfig, owner: e.target.value })}
-                    placeholder="octocat"
-                    className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-mono"
                   />
                 </div>
-
-                <div>
-                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    Repository Name:
-                  </label>
+                <div className="space-y-1">
+                  <label className="text-slate-600 dark:text-slate-400">{lang === 'lt' ? 'Repozitorija' : 'Repository'}</label>
                   <input
                     type="text"
+                    placeholder="tolerance-logs"
                     value={ghConfig.repo}
                     onChange={(e) => setGhConfig({ ...ghConfig, repo: e.target.value })}
-                    placeholder="my-tolerance-logs"
-                    className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-mono"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    File Path in Repo:
-                  </label>
+                <div className="space-y-1">
+                  <label className="text-slate-600 dark:text-slate-400">{lang === 'lt' ? 'Failo kelias' : 'File Path'}</label>
                   <input
                     type="text"
+                    placeholder="data/tolerance_window_logs.xlsx"
                     value={ghConfig.path}
                     onChange={(e) => setGhConfig({ ...ghConfig, path: e.target.value })}
-                    placeholder="data/tolerance_window_logs.xlsx"
-                    className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-mono"
                   />
                 </div>
-
-                <div>
-                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    Branch:
-                  </label>
+                <div className="space-y-1">
+                  <label className="text-slate-600 dark:text-slate-400">{lang === 'lt' ? 'Šaka' : 'Branch'}</label>
                   <input
                     type="text"
+                    placeholder="main"
                     value={ghConfig.branch}
                     onChange={(e) => setGhConfig({ ...ghConfig, branch: e.target.value })}
-                    placeholder="main"
-                    className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-mono"
                   />
                 </div>
               </div>
-
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
@@ -1661,151 +1458,108 @@ export default function WindowOfToleranceApp() {
                 onClick={() => setIsGhModalOpen(false)}
                 className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
-                Close
+                {lang === 'lt' ? 'Atšaukti' : 'Cancel'}
               </button>
               <button
                 onClick={() => {
                   setIsGhModalOpen(false);
-                  showToast('GitHub configuration saved locally');
+                  showToast(lang === 'lt' ? 'Nustatymai išsaugoti' : 'GitHub settings saved!');
                 }}
-                className="px-5 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 shadow-md"
+                className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold shadow-xs"
               >
-                Save Settings
+                {lang === 'lt' ? 'Išsaugoti' : 'Save Config'}
               </button>
             </div>
-
           </div>
         </div>
       )}
 
-      {}
+      {/* EDIT ROW MODAL */}
       {editRowData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 max-h-[90vh] overflow-y-auto">
-            
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="w-full max-w-xl p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-5">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <h3 className="font-extrabold text-slate-900 dark:text-slate-100 text-base flex items-center gap-2">
-                <Edit3 className="w-4 h-4 text-indigo-600" />
-                <span>Edit Entry ({editRowData.date})</span>
+              <h3 className="font-extrabold text-base">
+                {lang === 'lt' ? `Redaguoti Įrašą (${editRowData.date})` : `Edit Day Record (${editRowData.date})`}
               </h3>
-              <button onClick={() => setEditRowData(null)} className="p-1 text-slate-400">
+              <button
+                onClick={() => setEditRowData(null)}
+                className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {SLOT_CONFIGS.map(slot => {
-              const scoreKey = `${slot.id}Score`;
-              const timeKey = `${slot.id}Time`;
-              const notesKey = `${slot.id}Notes`;
+            <form onSubmit={handleUpdateEditedRow} className="space-y-4 text-xs font-semibold">
+              {SLOT_CONFIGS.map((slot) => {
+                const scoreKey = `${slot.id}Score`;
+                const timeKey = `${slot.id}Time`;
+                const notesKey = `${slot.id}Notes`;
 
-              return (
-                <div key={slot.id} className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-2 text-xs">
-                  <span className="font-extrabold text-slate-800 dark:text-slate-200 block">
-                    {slot.nameEn} Slot
-                  </span>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-500">Score (1-10 or MISSED):</label>
-                      <input
-                        type="text"
-                        value={editRowData[scoreKey] ?? 'MISSED'}
-                        onChange={(e) => {
-                          const val = e.target.value.trim();
-                          const num = Number(val);
-                          setEditRowData({
-                            ...editRowData,
-                            [scoreKey]: isNaN(num) || val === '' ? 'MISSED' : num
-                          });
-                        }}
-                        className="w-full p-1.5 rounded-xl border text-xs bg-white dark:bg-slate-900"
-                      />
+                return (
+                  <div key={slot.id} className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-2">
+                    <div className="flex items-center justify-between font-bold text-slate-800 dark:text-slate-200">
+                      <span>{slot.nameEn} ({slot.timeRangeEn})</span>
                     </div>
 
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-500">Time (HH:MM or MISSED):</label>
-                      <input
-                        type="text"
-                        value={editRowData[timeKey] ?? 'MISSED'}
-                        onChange={(e) => setEditRowData({ ...editRowData, [timeKey]: e.target.value })}
-                        className="w-full p-1.5 rounded-xl border text-xs bg-white dark:bg-slate-900"
-                      />
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <label className="text-[10px] text-slate-500">Score (1-10 or MISSED)</label>
+                        <select
+                          value={editRowData[scoreKey]}
+                          onChange={(e) => {
+                            const val = e.target.value === 'MISSED' ? 'MISSED' : Number(e.target.value);
+                            setEditRowData({ ...editRowData, [scoreKey]: val });
+                          }}
+                          className="w-full px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs"
+                        >
+                          <option value="MISSED">MISSED</option>
+                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
+                            <option key={n} value={n}>{n}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] text-slate-500">Time</label>
+                        <input
+                          type="text"
+                          value={editRowData[timeKey]}
+                          onChange={(e) => setEditRowData({ ...editRowData, [timeKey]: e.target.value })}
+                          className="w-full px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] text-slate-500">Notes</label>
+                        <input
+                          type="text"
+                          value={editRowData[notesKey] || ''}
+                          onChange={(e) => setEditRowData({ ...editRowData, [notesKey]: e.target.value })}
+                          className="w-full px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs"
+                        />
+                      </div>
                     </div>
                   </div>
+                );
+              })}
 
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-500">Context Notes:</label>
-                    <input
-                      type="text"
-                      value={editRowData[notesKey] ?? ''}
-                      onChange={(e) => setEditRowData({ ...editRowData, [notesKey]: e.target.value })}
-                      className="w-full p-1.5 rounded-xl border text-xs bg-white dark:bg-slate-900"
-                    />
-                  </div>
-                </div>
-              );
-            })}
-
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
-                onClick={() => setEditRowData(null)}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  setRecords(prev => {
-                    const idx = prev.findIndex(r => r.date === editRowData.date);
-                    if (idx >= 0) {
-                      const updated = [...prev];
-                      updated[idx] = { ...editRowData, updatedAt: new Date().toISOString() };
-                      return updated;
-                    }
-                    return prev;
-                  });
-                  setEditRowData(null);
-                  showToast('Record updated successfully');
-                }}
-                className="px-5 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white shadow-md"
-              >
-                Save Changes
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
-
-      {/* Confirmation Modal */}
-      {confirmModal.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-2xl bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300">
-                <AlertTriangle className="w-6 h-6" />
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setEditRowData(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                >
+                  {lang === 'lt' ? 'Atšaukti' : 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold shadow-xs"
+                >
+                  {lang === 'lt' ? 'Išsaugoti Pakeitimus' : 'Save Changes'}
+                </button>
               </div>
-              <h3 className="font-extrabold text-slate-900 dark:text-slate-100 text-base">
-                {confirmModal.title}
-              </h3>
-            </div>
-            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-              {confirmModal.message}
-            </p>
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
-                onClick={() => setConfirmModal({ isOpen: false, title: '', message: '', action: null })}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => confirmModal.action && confirmModal.action()}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 text-white hover:bg-rose-700 shadow-md"
-              >
-                Confirm
-              </button>
-            </div>
+            </form>
           </div>
         </div>
       )}
