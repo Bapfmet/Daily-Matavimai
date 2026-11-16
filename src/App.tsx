@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Sun,
   Sunrise,
@@ -412,14 +412,14 @@ const ZONES = {
   }
 };
 
-function getZoneByScore(score) {
+function getZoneByScore(score: any) {
   if (typeof score !== 'number' || isNaN(score)) return null;
   if (score >= 8) return ZONES.HYPER;
   if (score >= 4) return ZONES.OPTIMAL;
   return ZONES.HYPO;
 }
 
-function formatDateISO(date) {
+function formatDateISO(date: string | Date) {
   const d = new Date(date);
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -441,7 +441,7 @@ function detectSlotFromSystemTime() {
   return 'evening';
 }
 
-function formatDisplayDate(dateStr, lang = 'en') {
+function formatDisplayDate(dateStr: string, lang = 'en') {
   if (!dateStr) return '';
   const [y, m, d] = dateStr.split('-');
   const date = new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
@@ -455,20 +455,20 @@ function formatDisplayDate(dateStr, lang = 'en') {
   if (dateStr === todayStr) return lang === 'lt' ? 'Šiandien' : 'Today';
   if (dateStr === yesterdayStr) return lang === 'lt' ? 'Vakar' : 'Yesterday';
 
-  const options = { month: 'short', day: 'numeric' };
+  const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
   return date.toLocaleDateString(lang === 'lt' ? 'lt-LT' : 'en-US', options);
 }
 
 const loadXLSXLibrary = () => {
-  return new Promise((resolve, reject) => {
-    if (window.XLSX) {
-      resolve(window.XLSX);
+  return new Promise<any>((resolve, reject) => {
+    if ((window as any).XLSX) {
+      resolve((window as any).XLSX);
       return;
     }
     const script = document.createElement('script');
     script.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
     script.async = true;
-    script.onload = () => resolve(window.XLSX);
+    script.onload = () => resolve((window as any).XLSX);
     script.onerror = () => reject(new Error('Failed to load SheetJS XLSX script'));
     document.head.appendChild(script);
   });
@@ -480,7 +480,7 @@ export default function WindowOfToleranceApp() {
     return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
 
-  const [records, setRecords] = useState(() => {
+  const [records, setRecords] = useState<any[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_RECORDS);
       if (saved) {
@@ -509,7 +509,7 @@ export default function WindowOfToleranceApp() {
     };
   });
 
-  // Updated default timeframe to 'all'
+  // Default timeframe set to 'all' to show all entries
   const [timeframe, setTimeframe] = useState('all');
   const [connectMissedLines, setConnectMissedLines] = useState(true);
 
@@ -524,9 +524,9 @@ export default function WindowOfToleranceApp() {
 
   const [isGhModalOpen, setIsGhModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [lastSyncTime, setLastSyncTime] = useState(null);
-  const [toastMessage, setToastMessage] = useState(null);
-  const [editRowData, setEditRowData] = useState(null);
+  const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<{ msg: string; type: string } | null>(null);
+  const [editRowData, setEditRowData] = useState<any>(null);
 
   useEffect(() => {
     try {
@@ -556,12 +556,12 @@ export default function WindowOfToleranceApp() {
     setInputTime(getCurrentTimeFormatted());
   }, [selectedSlot]);
 
-  const showToast = (msg, type = 'success') => {
+  const showToast = (msg: string, type = 'success') => {
     setToastMessage({ msg, type });
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  const handleSaveEntry = (e) => {
+  const handleSaveEntry = (e: React.FormEvent) => {
     e.preventDefault();
 
     setRecords(prevRecords => {
@@ -626,7 +626,7 @@ export default function WindowOfToleranceApp() {
     );
   };
 
-  const generateXLSXBase64 = async (dataRecords) => {
+  const generateXLSXBase64 = async (dataRecords: any[]) => {
     const XLSX = await loadXLSXLibrary();
 
     const exportRows = dataRecords.map(r => ({
@@ -710,7 +710,7 @@ export default function WindowOfToleranceApp() {
         console.log('File does not exist on remote yet.');
       }
 
-      const payload = {
+      const payload: any = {
         message: `Sync Window of Tolerance logs (${records.length} days)`,
         content: base64Content,
         branch
@@ -734,7 +734,7 @@ export default function WindowOfToleranceApp() {
 
       setLastSyncTime(new Date().toLocaleTimeString());
       showToast(lang === 'lt' ? 'Sėkmingai sinchronizuota su GitHub!' : 'Successfully synced .xlsx to GitHub!');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
       showToast(`GitHub Sync Error: ${err.message}`, 'error');
     } finally {
@@ -778,13 +778,13 @@ export default function WindowOfToleranceApp() {
       const sheetName = workbook.SheetNames[0];
       const jsonRows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
 
-      const parseScore = (v) => {
+      const parseScore = (v: any) => {
         if (v === 'MISSED' || v === undefined || v === null || v === '') return 'MISSED';
         const n = Number(v);
         return isNaN(n) ? 'MISSED' : n;
       };
 
-      const importedRecords = jsonRows.map(row => ({
+      const importedRecords = jsonRows.map((row: any) => ({
         date: String(row['Date'] || row['date'] || ''),
         morningScore: parseScore(row['Morning Score']),
         morningTime: String(row['Morning Time'] || 'MISSED'),
@@ -796,12 +796,12 @@ export default function WindowOfToleranceApp() {
         eveningTime: String(row['Evening Time'] || 'MISSED'),
         eveningNotes: String(row['Evening Notes'] || ''),
         updatedAt: row['Updated At'] || new Date().toISOString()
-      })).filter(r => r.date);
+      })).filter((r: any) => r.date);
 
-      setRecords(importedRecords.sort((a, b) => b.date.localeCompare(a.date)));
+      setRecords(importedRecords.sort((a: any, b: any) => b.date.localeCompare(a.date)));
       setLastSyncTime(new Date().toLocaleTimeString());
       showToast(lang === 'lt' ? `Atsisiųsta ${importedRecords.length} dienų iš GitHub!` : `Downloaded ${importedRecords.length} days from GitHub!`);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
       showToast(`GitHub Pull Error: ${err.message}`, 'error');
     } finally {
@@ -817,9 +817,11 @@ export default function WindowOfToleranceApp() {
       sliced = sorted.slice(-7);
     } else if (timeframe === '30d') {
       sliced = sorted.slice(-30);
+    } else if (timeframe === 'all') {
+      sliced = sorted;
     }
 
-    const points = [];
+    const points: any[] = [];
     sliced.forEach((r) => {
       SLOT_CONFIGS.forEach((slot) => {
         const scoreVal = r[`${slot.id}Score`];
@@ -914,7 +916,7 @@ export default function WindowOfToleranceApp() {
 
   const activeZone = getZoneByScore(selectedScore);
 
-  const renderCustomChartDot = (props) => {
+  const renderCustomChartDot = (props: any) => {
     const { cx, cy, payload } = props;
     if (cx === undefined || cy === undefined) return null;
 
@@ -944,7 +946,7 @@ export default function WindowOfToleranceApp() {
     );
   };
 
-  const CustomChartTooltip = ({ active, payload }) => {
+  const CustomChartTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       const zone = getZoneByScore(data.numericScore);
@@ -985,7 +987,7 @@ export default function WindowOfToleranceApp() {
     return null;
   };
 
-  const handleUpdateEditedRow = (e) => {
+  const handleUpdateEditedRow = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editRowData) return;
 
@@ -1004,7 +1006,7 @@ export default function WindowOfToleranceApp() {
     showToast(lang === 'lt' ? 'Įrašas atnaujintas' : 'Row updated successfully');
   };
 
-  const handleDeleteRow = (dateStr) => {
+  const handleDeleteRow = (dateStr: string) => {
     if (window.confirm(lang === 'lt' ? `Ar tikrai ištrinti ${dateStr}?` : `Delete logs for ${dateStr}?`)) {
       setRecords(prev => prev.filter(r => r.date !== dateStr));
       showToast(lang === 'lt' ? 'Ištrinta' : 'Record deleted');
@@ -1187,7 +1189,7 @@ export default function WindowOfToleranceApp() {
                       type="button"
                       onClick={() => setSelectedScore(num)}
                       className={`h-11 rounded-xl text-sm font-black transition flex items-center justify-center ${
-                        isSelected ? z.btnActive : z.btnDefault
+                        isSelected ? z?.btnActive : z?.btnDefault
                       }`}
                     >
                       {num}
@@ -1370,7 +1372,7 @@ export default function WindowOfToleranceApp() {
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
                 {filteredRecords.map((r) => {
-                  const renderSlotBadge = (score, time, notes) => {
+                  const renderSlotBadge = (score: any, time: string, notes: string) => {
                     if (score === 'MISSED' || score === undefined || score === null) {
                       return <span className="text-slate-400 dark:text-slate-600 italic">MISSED</span>;
                     }
