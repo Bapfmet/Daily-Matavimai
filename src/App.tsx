@@ -509,7 +509,8 @@ export default function WindowOfToleranceApp() {
     };
   });
 
-  const [timeframe, setTimeframe] = useState('7d');
+  // Updated default timeframe to 'all'
+  const [timeframe, setTimeframe] = useState('all');
   const [connectMissedLines, setConnectMissedLines] = useState(true);
 
   const [selectedDate, setSelectedDate] = useState(() => formatDateISO(new Date()));
@@ -736,7 +737,7 @@ export default function WindowOfToleranceApp() {
     } catch (err) {
       console.error(err);
       showToast(`GitHub Sync Error: ${err.message}`, 'error');
-    } finally {
+    } fontally {
       setIsSyncing(false);
     }
   };
