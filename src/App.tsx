@@ -737,7 +737,7 @@ export default function WindowOfToleranceApp() {
     } catch (err) {
       console.error(err);
       showToast(`GitHub Sync Error: ${err.message}`, 'error');
-    } fontally {
+    } finally {
       setIsSyncing(false);
     }
   };
